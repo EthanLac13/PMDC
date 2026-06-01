@@ -25,22 +25,29 @@ namespace PMDC.Dungeon
 
         public override GameAction Think(Character controlledChar, bool preThink, IRandom rand)
         {
-            if(!IncludeMoney) {
-                if (controlledChar.MemberTeam is ExplorerTeam)
-                {
-                    ExplorerTeam explorerTeam = (ExplorerTeam)controlledChar.MemberTeam;
-                    if (explorerTeam.GetInvCount() >= explorerTeam.GetMaxInvSlots(ZoneManager.Instance.CurrentZone))
-                        return null;
-                }
-                else
-                {
-                    //already holding an item
-                    if (!String.IsNullOrEmpty(controlledChar.EquippedItem.ID))
-                        return null;
-                }
+            if (!IncludeMoney)
+            {
+                if (DontWantItem(controlledChar))
+                    return null;
             }
 
             return base.Think(controlledChar, preThink, rand);
+        }
+
+        protected bool DontWantItem(Character controlledChar)
+        {
+            if (controlledChar.MemberTeam is ExplorerTeam)
+            {
+                ExplorerTeam explorerTeam = (ExplorerTeam)controlledChar.MemberTeam;
+                if (explorerTeam.GetInvCount() >= explorerTeam.GetMaxInvSlots(ZoneManager.Instance.CurrentZone))
+                    return true;
+            }
+            else
+            {
+                if (!String.IsNullOrEmpty(controlledChar.EquippedItem.ID))
+                    return true;
+            }
+            return false;
         }
 
         protected override List<Loc> GetDestinations(Character controlledChar)
@@ -49,26 +56,27 @@ namespace PMDC.Dungeon
             Loc seen = Character.GetSightDims();
             Loc mapStart = controlledChar.CharLoc - seen;
             Loc mapSize = seen * 2 + new Loc(1);
-            bool moneyOnly = false; //In case inventory is full, go only after money!
-            
+            bool dontWantItem = DontWantItem(controlledChar);
+
+
             List<Loc> loc_list = new List<Loc>();
-            
-            //In case inventory is full, go only after money!
-            if (controlledChar.MemberTeam is ExplorerTeam)
-            {
-                ExplorerTeam explorerTeam = (ExplorerTeam)controlledChar.MemberTeam;
-                if (explorerTeam.GetInvCount() >= explorerTeam.GetMaxInvSlots(ZoneManager.Instance.CurrentZone))
-                    moneyOnly = true;
-            }
-            if(moneyOnly && !IncludeMoney) return loc_list; // Should not be possible... But just to make sure...
             
             //currently, CPU sight cheats by knowing items up to the bounds, instead of individual tiles at the border of FOV.
             //fix later
             foreach (MapItem item in ZoneManager.Instance.CurrentMap.Items)
             {
-                if(moneyOnly && !item.IsMoney) continue; //In case inventory is full, go only after money!
-                if (item.IsMoney && !IncludeMoney) continue;
-                if (!item.IsMoney && item.Price > 0) continue;
+                if (item.IsMoney)
+                {
+                    if (!IncludeMoney)
+                        continue;
+                }
+                else
+                {
+                    if (dontWantItem)
+                        continue;
+                    if (item.Price > 0)
+                        continue;
+                }
                 
                 if (ZoneManager.Instance.CurrentMap.InBounds(new Rect(mapStart, mapSize), item.TileLoc))
                     TryAddDest(controlledChar, loc_list, item.TileLoc);
