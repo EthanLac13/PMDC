@@ -1942,9 +1942,11 @@ namespace PMDC.Dungeon
 
         public int HPFraction;
 
-
+        /// <summary>
+        /// Leave blank to delete the item.
+        /// </summary>
         [JsonConverter(typeof(ItemConverter))]
-        [DataType(0, DataManager.DataType.Item, false)]
+        [DataType(0, DataManager.DataType.Item, true)]
         public string ChangeTo;
 
         public AutoReviveEvent() { ChangeTo = ""; }
