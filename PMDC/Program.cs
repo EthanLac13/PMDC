@@ -579,12 +579,12 @@ namespace PMDC
                 {
                     //print the guidebook in the chosen language
                     //we need the datamanager for this
-                    LuaEngine.InitInstance();
-                    LuaEngine.Instance.LoadScripts();
                     DataManager.InitInstance();
                     DataManager.Instance.InitData();
+                    LuaEngine.InitInstance();
+                    LuaEngine.Instance.LoadScripts();
                     //just print a guidebook and exit
-                    //StrategyGuide.PrintMoveWiki();
+                    StrategyGuide.PrintMoveWiki();
                     StrategyGuide.PrintItemWiki();
                     //StrategyGuide.PrintAbilityWiki();
                     //StrategyGuide.PrintMonsterWiki();

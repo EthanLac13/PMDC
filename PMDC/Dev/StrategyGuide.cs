@@ -9,6 +9,7 @@ using RogueEssence.LevelGen;
 using RogueEssence;
 using PMDC.Data;
 using PMDC.Dungeon;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PMDC.Dev
 {
@@ -16,7 +17,7 @@ namespace PMDC.Dev
     {
         private const int TOTAL_CHUNKS = 60;
 
-        private static void WriteToWiki(string name, string content)
+        private static bool WriteToWiki(string name, string content)
         {
             if (!Directory.Exists(PathMod.APP_PATH + "WIKI/"))
                 Directory.CreateDirectory(PathMod.APP_PATH + "WIKI/");
@@ -27,6 +28,12 @@ namespace PMDC.Dev
             if (!Directory.Exists(endDirectory))
                 Directory.CreateDirectory(endDirectory);
 
+            if (File.Exists(endPath))
+            {
+                Console.WriteLine("Path conflict: " + name);
+                return false;
+            }
+
             using (var fstream = File.CreateText(endPath))
             {
                 fstream.WriteLine(content);
@@ -34,6 +41,7 @@ namespace PMDC.Dev
                 fstream.Flush();
                 fstream.Close();
             }
+            return true;
         }
 
         private static void writeCSVGuide(string name, List<string[]> stats)
@@ -233,6 +241,35 @@ namespace PMDC.Dev
                 writeHTMLGuide("Items", stats);
         }
 
+        private static bool hasUnown(string input)
+        {
+            bool hasUnown = false;
+            foreach (char c in input)
+            {
+                if (c > '\uE000')
+                {
+                    hasUnown = true;
+                    break;
+                }
+            }
+            return hasUnown;
+        }
+
+        private static string substituteUnown(string input)
+        {
+            string output = "";
+            foreach (char c in input)
+            {
+                if (c > '\uE000')
+                {
+                    output += (char)(c - '\uE000');
+                }
+                else
+                    output += c;
+            }
+            return output;
+        }
+
         public static void PrintItemWiki()
         {
             List<string> itemKeys = DataManager.Instance.DataIndices[DataManager.DataType.Item].GetOrderedKeys(true);
@@ -244,15 +281,20 @@ namespace PMDC.Dev
                 if (entry.Released)
                 {
                     string localName = entry.Name.ToLocal();
+                    if (hasUnown(localName))
+                        localName = substituteUnown(localName);
                     string fileContent = "{{{{{1|ItemData}}}" +
                         "\r\n|item_name=" + localName +
-                        "\r\n|sprite=" + entry.Sprite +
+                        "\r\n|sprite=" + entry.Sprite + ".png" +
                         "\r\n|item_id=" + key +
-                        "\r\n|is_edible=" + entry.ItemStates.Contains<EdibleState>() +
+                        "\r\n|is_edible=" + (entry.ItemStates.Contains<EdibleState>() ? "Yes" : "No") +
+                        "\r\n|stack_size=" + Math.Max(1, entry.MaxStack) +
                         "\r\n|value=" + entry.Price +
                         "\r\n}}";
 
-                    WriteToWiki(localName + "/Data", fileContent);
+                    bool completed = WriteToWiki(localName + "/Data", fileContent);
+                    if (!completed)
+                        completed = WriteToWiki(localName + " (Item)/Data", fileContent);
                 }
             }
         }
@@ -289,6 +331,55 @@ namespace PMDC.Dev
                 writeCSVGuide("Moves", stats);
             else
                 writeHTMLGuide("Moves", stats);
+        }
+
+        public static void PrintMoveWiki()
+        {
+            List<string> itemKeys = DataManager.Instance.DataIndices[DataManager.DataType.Skill].GetOrderedKeys(true);
+            for (int ii = 0; ii < itemKeys.Count; ii++)
+            {
+                ProgressBar("Creating skill pages...", "Done.", TOTAL_CHUNKS, ii, itemKeys.Count);
+                string key = itemKeys[ii];
+                SkillData entry = DataManager.Instance.GetSkill(key);
+                if (entry.Released)
+                {
+                    string localName = entry.Name.ToLocal();
+                    string localDesc = entry.Desc.ToLocal();
+                    ElementData elementEntry = DataManager.Instance.GetElement(entry.Data.Element);
+                    BasePowerState powerState = entry.Data.SkillStates.GetWithDefault<BasePowerState>();
+                    string target_string = entry.HitboxAction.GetTargetsString(false);
+                    string target_string_plural = entry.HitboxAction.GetTargetsString(true);
+                    string true_target_string = "";
+                    string range_string = entry.HitboxAction.GetDescription();
+                    if (range_string.StartsWith(target_string_plural + " in "))
+                        true_target_string = target_string_plural;
+                    else if (range_string.StartsWith(target_string + " in "))
+                        true_target_string = target_string;
+                    if (true_target_string != "")
+                        range_string = range_string.Substring(true_target_string.Length + 4, range_string.Length - true_target_string.Length - 4);
+                    string power_string = (powerState != null ? powerState.Power.ToString() : "--");
+                    if (entry.Strikes > 1)
+                        power_string += "x" + entry.Strikes;
+                    string hit_string = (entry.Data.HitRate > 0 ? entry.Data.HitRate.ToString() : "--");
+                    
+                    string fileContent = "{{{{{1|MoveData}}}" +
+                        "\r\n|move_name=" + localName +
+                        "\r\n|move_id=" + key +
+                        "\r\n|type=" + elementEntry.Name.ToLocal() +
+                        "\r\n|category=" + entry.Data.Category.ToLocal() +
+                        "\r\n|power=" + power_string +
+                        "\r\n|accuracy=" + hit_string +
+                        "\r\n|pp=" + entry.BaseCharges +
+                        "\r\n|range=" + range_string +
+                        "\r\n|target=" + true_target_string +
+                        "\r\n|effects=" + "[TMP] " + localDesc +
+                        "\r\n}}";
+
+                    bool completed = WriteToWiki(localName + "/Data", fileContent);
+                    if (!completed)
+                        completed = WriteToWiki(localName + " (Move)/Data", fileContent);
+                }
+            }
         }
 
         public static void PrintAbilityGuide(bool csv)
