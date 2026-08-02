@@ -79,7 +79,7 @@ namespace PMDC.Dungeon
     /// Multipliers work as follows (before reaching damage calc):
     /// Num > 0: Process damage normally with msg
     /// Num = 0: Process 0 damage with msg
-    /// Num < 0: Process 0 damage without msg
+    /// Num &lt; 0: Process 0 damage without msg
     /// Denominator is always > 0
     /// </summary>
     [Serializable]
@@ -102,7 +102,7 @@ namespace PMDC.Dungeon
     /// Multipliers work as follows:
     /// Num > 0: Process accuracy calcs normally with msg
     /// Num = 0: Process automatic miss with msg, unless the attack never misses. ignores miss compensation
-    /// Num < 0: Process automatic miss without msg, even if the attack never misses
+    /// Num &lt; 0: Process automatic miss without msg, even if the attack never misses
     /// Denominator is always > 0
     /// </summary>
     [Serializable]
