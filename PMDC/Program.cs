@@ -587,7 +587,8 @@ namespace PMDC
                     StrategyGuide.PrintMoveWiki();
                     StrategyGuide.PrintItemWiki();
                     //StrategyGuide.PrintAbilityWiki();
-                    //StrategyGuide.PrintMonsterWiki();
+                    StrategyGuide.PrintMonsterWiki();
+                    StrategyGuide.PrintMonsterFamilyWiki();
                     //StrategyGuide.PrintDungeonWiki();
                     return;
                 }
