@@ -571,6 +571,10 @@ namespace PMDC.Dev
                     }
                 }
 
+                // Keep track of names that have already been used in the data structure
+                List<String> namesAlreadyUsed = new List<string>();
+                int currentFormNumber = 0;
+
                 // Print the Pokemon family page
                 string fileContent = "__NOTOC__";
 
@@ -587,11 +591,27 @@ namespace PMDC.Dev
                         string formName = currentMonsterForm.FormName.DefaultText;
                         string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
 
+                        if (namesAlreadyUsed.Contains(strippedName))
+                        {
+                            currentFormNumber += 1;
+                            strippedName = strippedName + "_" + currentFormNumber.ToString();
+                        }
+                        else
+                        {
+                            currentFormNumber = 0;
+                        }
+
                         fileContent += String.Format("\r\n<tab name=\"{0}\">{{:{1}/Data|PokemonInfobox}}</tab>", formName, strippedName);
+
+                        namesAlreadyUsed.Add(strippedName);
                     }
 
                     // End the tab
                     fileContent += "\r\n<tabs>";
+                }
+                foreach (string nameUsed in namesAlreadyUsed)
+                {
+                    Console.WriteLine(nameUsed);
                 }
                 fileContent += "\r\n";
 
