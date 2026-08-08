@@ -315,7 +315,7 @@ namespace PMDC.Dev
             {
                 string key = itemKeys[ii];
                 MonsterData entry = DataManager.Instance.GetMonster(key);
-                if (entry.Released)
+                if (entry.Released && entry.IndexNum > 0)
                 {
                     // Get the Pokemon name
                     string localName = entry.Name.ToLocal();
@@ -529,7 +529,10 @@ namespace PMDC.Dev
                 {
                     if (entry.PromoteFrom == "")
                     {
-                        firstFormMonsters.Add(entry);
+                        if (entry.IndexNum > 0)
+                        {
+                            firstFormMonsters.Add(entry);
+                        }
                     }
                 }
             }
