@@ -428,8 +428,8 @@ namespace PMDC
                     //we need the datamanager for this, but only while data is hardcoded
                     //TODO: remove when data is no longer hardcoded
                     LuaEngine.InitInstance();
-                    LuaEngine.Instance.LoadScripts();
                     DataManager.InitInstance();
+                    LuaEngine.Instance.LoadScripts();
 
                     RogueEssence.Dev.DevHelper.MergeQuest(quest);
 
@@ -457,8 +457,8 @@ namespace PMDC
                         GraphicsManager.RebuildIndices(GraphicsManager.AssetType.All);
                     }
 
-                    DataManager.InitInstance();
                     LuaEngine.InitInstance();
+                    DataManager.InitInstance();
                     LuaEngine.Instance.LoadScripts();
                     DataManager.Instance.LoadConversions();
                     RogueEssence.Dev.DevHelper.PrepareAssetConversion();
@@ -481,8 +481,8 @@ namespace PMDC
                     //we need the datamanager for this, but only while data is hardcoded
                     //TODO: remove when data is no longer hardcoded
                     LuaEngine.InitInstance();
-                    LuaEngine.Instance.LoadScripts();
                     DataManager.InitInstance();
+                    LuaEngine.Instance.LoadScripts();
                     DiagManager.Instance.LogInfo("Resaving files");
                     DataManager.InitDataDirs(PathMod.ModPath(""));
                     if (resaveIndices == DataManager.DataType.All)
@@ -511,8 +511,8 @@ namespace PMDC
 
                     //we need the datamanager for this, but only while data is hardcoded
                     //TODO: remove when data is no longer hardcoded
-                    DataManager.InitInstance();
                     LuaEngine.InitInstance();
+                    DataManager.InitInstance();
                     LuaEngine.Instance.LoadScripts();
                     DataManager.Instance.LoadConversions();
 
@@ -546,8 +546,8 @@ namespace PMDC
                 {
                     //we need the datamanager for this, but only while data is hardcoded
                     //TODO: remove when data is no longer hardcoded
-                    DataManager.InitInstance();
                     LuaEngine.InitInstance();
+                    DataManager.InitInstance();
                     LuaEngine.Instance.LoadScripts();
                     DiagManager.Instance.LogInfo("Reserializing indices");
                     DataManager.InitDataDirs(PathMod.ModPath(""));
@@ -563,9 +563,9 @@ namespace PMDC
                 {
                     //print the guidebook in the chosen language
                     //we need the datamanager for this
+                    LuaEngine.InitInstance();
                     DataManager.InitInstance();
                     DataManager.Instance.InitData();
-                    LuaEngine.InitInstance();
                     LuaEngine.Instance.LoadScripts();
                     //just print a guidebook and exit
                     StrategyGuide.PrintMoveGuide(guideCsv);
@@ -579,9 +579,9 @@ namespace PMDC
                 {
                     //print the guidebook in the chosen language
                     //we need the datamanager for this
+                    LuaEngine.InitInstance();
                     DataManager.InitInstance();
                     DataManager.Instance.InitData();
-                    LuaEngine.InitInstance();
                     LuaEngine.Instance.LoadScripts();
                     StrategyGuide.DeleteWiki();
                     //just print a guidebook and exit
