@@ -19,6 +19,13 @@ namespace PMDC.Dev
     {
         private const int TOTAL_CHUNKS = 60;
 
+
+        public static void DeleteWiki()
+        {
+            if (Directory.Exists(PathMod.APP_PATH + "WIKI/"))
+                Directory.Delete(PathMod.APP_PATH + "WIKI/", true);
+        }
+
         private static bool WriteToWiki(string name, string content)
         {
             if (!Directory.Exists(PathMod.APP_PATH + "WIKI/"))

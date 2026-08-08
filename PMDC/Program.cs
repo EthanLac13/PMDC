@@ -583,6 +583,7 @@ namespace PMDC
                     DataManager.Instance.InitData();
                     LuaEngine.InitInstance();
                     LuaEngine.Instance.LoadScripts();
+                    StrategyGuide.DeleteWiki();
                     //just print a guidebook and exit
                     StrategyGuide.PrintMoveWiki();
                     StrategyGuide.PrintItemWiki();
