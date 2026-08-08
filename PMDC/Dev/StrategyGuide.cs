@@ -691,7 +691,47 @@ namespace PMDC.Dev
                     if (entry.Strikes > 1)
                         power_string += "x" + entry.Strikes;
                     string hit_string = (entry.Data.HitRate > 0 ? entry.Data.HitRate.ToString() : "--");
-                    
+                    List<string> removals = new List<string>();
+                    foreach (BattleEvent battleEvent in entry.Data.OnHitTiles.EnumerateInOrder())
+                    {
+                        if (battleEvent is RemoveItemEvent)
+                            removals.Add("Destroys Items");
+                        else if (battleEvent is RemoveTrapEvent)
+                            removals.Add("Destroys Traps");
+                        else if (battleEvent is RemoveTerrainStateEvent)
+                        {
+                            RemoveTerrainStateEvent removeTerrain = (RemoveTerrainStateEvent)battleEvent;
+                            foreach (FlagType state in removeTerrain.States)
+                            {
+                                if (state.FullType == typeof(WallTerrainState))
+                                    removals.Add("Breaks Walls");
+                                else if (state.FullType == typeof(WaterTerrainState))
+                                    removals.Add("Removes Water");
+                                else if (state.FullType == typeof(LavaTerrainState))
+                                    removals.Add("Removes Lava");
+                                else if (state.FullType == typeof(AbyssTerrainState))
+                                    removals.Add("Removes Pits");
+                                else if (state.FullType == typeof(FoliageTerrainState))
+                                    removals.Add("Removes Grass");
+                            }
+                        }
+                        else if (battleEvent is ShatterTerrainEvent)
+                        {
+                            ShatterTerrainEvent removeTerrain = (ShatterTerrainEvent)battleEvent;
+                            foreach (string state in removeTerrain.TileTypes)
+                            {
+                                if (state == "wall")
+                                    removals.Add("Breaks Walls + Adjacents");
+                            }
+                        }
+                    }
+
+                    string terrain_string = "None";
+                    if (removals.Count > 0)
+                    {
+                        terrain_string = String.Join("\n", removals);
+                    }
+
                     string fileContent = "{{{{{1|MoveData}}}" +
                         "\r\n|move_name=" + localName +
                         "\r\n|move_id=" + key +
@@ -702,6 +742,7 @@ namespace PMDC.Dev
                         "\r\n|pp=" + entry.BaseCharges +
                         "\r\n|range=" + range_string +
                         "\r\n|target=" + true_target_string +
+                        "\r\n|terrain_effects=" + terrain_string +
                         "\r\n|effects=" + "[TMP] " + localDesc +
                         "\r\n}}";
 
