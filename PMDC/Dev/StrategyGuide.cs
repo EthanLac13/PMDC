@@ -332,7 +332,7 @@ namespace PMDC.Dev
                         }
                         // Console.WriteLine(localName + "_" + form + ": " + formIsCosmetic);
 
-                        if (!formIsCosmetic)
+                        if (!formIsCosmetic && formData.Released)
                         {
                             // Set the last form used for comparison to cosmetic formes
                             lastValidForm = form;
@@ -378,7 +378,7 @@ namespace PMDC.Dev
                             {
                                 LevelUpSkill level_up_skill = formData.LevelSkills[skill_index];
                                 SkillData current_skill = DataManager.Instance.GetSkill(level_up_skill.Skill);
-                                learnsetFileContent += String.Format("|  {0} {{:{1}/Data|LearnsetRow}}\r\n", level_up_skill.Level, current_skill.Name.DefaultText);
+                                learnsetFileContent += ("|  " + level_up_skill.Level + " {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
                             }
                             // TM learnset
                             learnsetFileContent += "|}\r\n\r\n<h6>By TM</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
@@ -386,7 +386,7 @@ namespace PMDC.Dev
                             {
                                 LearnableSkill learnable_skill = formData.TeachSkills[skill_index];
                                 SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
                             }
                             // Tutor learnset
                             learnsetFileContent += "|}\r\n\r\n<h6>By Move Tutor</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
@@ -394,7 +394,7 @@ namespace PMDC.Dev
                             {
                                 LearnableSkill learnable_skill = formData.SecretSkills[skill_index];
                                 SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
                             }
                             // Tutor learnset
                             learnsetFileContent += "|}\r\n\r\n<h6>Egg Moves</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
@@ -402,7 +402,7 @@ namespace PMDC.Dev
                             {
                                 LearnableSkill learnable_skill = formData.SharedSkills[skill_index];
                                 SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
                             }
                             learnsetFileContent += "|}\r\n\r\n<noinclude>[[Category: Learnsets]]</noinclude>";
 
