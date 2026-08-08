@@ -319,98 +319,113 @@ namespace PMDC.Dev
                 {
                     // Get the Pokemon name
                     string localName = entry.Name.ToLocal();
-
+                    int lastValidForm = 0;
+                    
                     for (int form = 0; form < entry.Forms.Count; form++)
                     {
                         MonsterFormData formData = (MonsterFormData)entry.Forms[form];
-                        string formName = formData.FormName.DefaultText;
-                        string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
-
-
-                        // Get type names
-                        ElementData element1 = DataManager.Instance.GetElement(formData.Element1);
-                        ElementData element2 = DataManager.Instance.GetElement(formData.Element2);
-
-                        // Get ability names
-                        IntrinsicData intrinsic1 = DataManager.Instance.GetIntrinsic(formData.Intrinsic1);
-                        IntrinsicData intrinsic2 = DataManager.Instance.GetIntrinsic(formData.Intrinsic2);
-                        IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
-
-                        // Create main Pokemon data entry
-                        string dataFileContent = "{{{{{1|PokemonData}}}" +
-                            "\r\n|pokemon_name=" + formName +
-                            "\r\n|pokemon_id=" + key +
-                            "\r\n|form_id=" + form +
-                            "\r\n|type1=" + element1.Name.DefaultText +
-                            "\r\n|type2=" + element2.Name.DefaultText +
-                            "\r\n|ability1=" + intrinsic1.Name.DefaultText +
-                            "\r\n|ability2=" + intrinsic2.Name.DefaultText +
-                            "\r\n|ability3=" + intrinsic3.Name.DefaultText +
-                            "\r\n|recruit=" + entry.JoinRate +
-                            "\r\n|portrait=Portrait_" + strippedName + ".png" + 
-                            "\r\n}}";
-
-                        // Write main Pokemon data entry
-                        bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
-                        if (!completed) // Check for duplicate form name and append form number as a fallback
-                            completed = WriteToWiki(strippedName + "_" + form + "/Data", dataFileContent);
-
-
-                        // Write learnset data
-
-                        // Level-up learnset
-                        string learnsetFileContent = "<h6>By level up</h6>\n{|- class=\"wikitable\"\n{{LearnsetHeader}}\r\n";
-                        for (int skill_index = 0; skill_index < formData.LevelSkills.Count; skill_index++)
+                        // Check if this is a cosmetic form
+                        bool formIsCosmetic = false;
+                        if (form > 0)
                         {
-                            LevelUpSkill level_up_skill = formData.LevelSkills[skill_index];
-                            SkillData current_skill = DataManager.Instance.GetSkill(level_up_skill.Skill);
-                            learnsetFileContent += String.Format("|  {0} {{:{1}/Data|LearnsetRow}}\r\n", level_up_skill.Level, current_skill.Name.DefaultText);
+                            formIsCosmetic = EvaluateCosmeticForm(entry, form, lastValidForm);
                         }
-                        // TM learnset
-                        learnsetFileContent += "|}\r\n\r\n<h6>By TM</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
-                        for (int skill_index = 0; skill_index < formData.TeachSkills.Count; skill_index++)
+                        // Console.WriteLine(localName + "_" + form + ": " + formIsCosmetic);
+
+                        if (!formIsCosmetic)
                         {
-                            LearnableSkill learnable_skill = formData.TeachSkills[skill_index];
-                            SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                            learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                            // Set the last form used for comparison to cosmetic formes
+                            lastValidForm = form;
+
+                            string formName = formData.FormName.DefaultText;
+                            string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+
+
+                            // Get type names
+                            ElementData element1 = DataManager.Instance.GetElement(formData.Element1);
+                            ElementData element2 = DataManager.Instance.GetElement(formData.Element2);
+
+                            // Get ability names
+                            IntrinsicData intrinsic1 = DataManager.Instance.GetIntrinsic(formData.Intrinsic1);
+                            IntrinsicData intrinsic2 = DataManager.Instance.GetIntrinsic(formData.Intrinsic2);
+                            IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
+
+                            // Create main Pokemon data entry
+                            string dataFileContent = "{{{{{1|PokemonData}}}" +
+                                "\r\n|pokemon_name=" + formName +
+                                "\r\n|pokemon_id=" + key +
+                                "\r\n|form_id=" + form +
+                                "\r\n|type1=" + element1.Name.DefaultText +
+                                "\r\n|type2=" + element2.Name.DefaultText +
+                                "\r\n|ability1=" + intrinsic1.Name.DefaultText +
+                                "\r\n|ability2=" + intrinsic2.Name.DefaultText +
+                                "\r\n|ability3=" + intrinsic3.Name.DefaultText +
+                                "\r\n|recruit=" + entry.JoinRate +
+                                "\r\n|portrait=Portrait_" + strippedName + ".png" +
+                                "\r\n}}";
+
+                            // Write main Pokemon data entry
+                            bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
+                            if (!completed) // Check for duplicate form name and append form number as a fallback
+                                completed = WriteToWiki(strippedName + "_" + form + "/Data", dataFileContent);
+
+
+                            // Write learnset data
+
+                            // Level-up learnset
+                            string learnsetFileContent = "<h6>By level up</h6>\n{|- class=\"wikitable\"\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.LevelSkills.Count; skill_index++)
+                            {
+                                LevelUpSkill level_up_skill = formData.LevelSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(level_up_skill.Skill);
+                                learnsetFileContent += String.Format("|  {0} {{:{1}/Data|LearnsetRow}}\r\n", level_up_skill.Level, current_skill.Name.DefaultText);
+                            }
+                            // TM learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>By TM</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.TeachSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.TeachSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                            }
+                            // Tutor learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>By Move Tutor</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.SecretSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.SecretSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                            }
+                            // Tutor learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>Egg Moves</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.SharedSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.SharedSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
+                            }
+                            learnsetFileContent += "|}\r\n\r\n<noinclude>[[Category: Learnsets]]</noinclude>";
+
+                            // Write main Pokemon data entry
+                            bool learnset_completed = WriteToWiki(strippedName + "/Learnset", learnsetFileContent);
+                            if (!learnset_completed) // Check for duplicate form name and append form number as a fallback
+                                learnset_completed = WriteToWiki(strippedName + "_" + form + "/Learnset", learnsetFileContent);
+
+
+                            // Write stats entry
+                            string statsFileContent = "{{StatBars|" +
+                                "\r\n|hp=" + formData.BaseHP +
+                                "\r\n|atk=" + formData.BaseAtk +
+                                "\r\n|def=" + formData.BaseDef +
+                                "\r\n|spa=" + formData.BaseMAtk +
+                                "\r\n|spd=" + formData.BaseMDef +
+                                "\r\n|spe=" + formData.BaseSpeed +
+                                "\r\n}}\n<noinclude>[[Category: Pokémon stat pages]]</noinclude>";
+
+                            bool stats_completed = WriteToWiki(strippedName + "/Stats", statsFileContent);
+                            if (!stats_completed) // Check for duplicate form name and append form number as a fallback
+                                stats_completed = WriteToWiki(strippedName + "_" + form + "/Stats", statsFileContent);
                         }
-                        // Tutor learnset
-                        learnsetFileContent += "|}\r\n\r\n<h6>By Move Tutor</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
-                        for (int skill_index = 0; skill_index < formData.SecretSkills.Count; skill_index++)
-                        {
-                            LearnableSkill learnable_skill = formData.SecretSkills[skill_index];
-                            SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                            learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
-                        }
-                        // Tutor learnset
-                        learnsetFileContent += "|}\r\n\r\n<h6>Egg Moves</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
-                        for (int skill_index = 0; skill_index < formData.SharedSkills.Count; skill_index++)
-                        {
-                            LearnableSkill learnable_skill = formData.SharedSkills[skill_index];
-                            SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
-                            learnsetFileContent += String.Format("| {{:{0}/Data|LearnsetRow}}\r\n", current_skill.Name.DefaultText);
-                        }
-                        learnsetFileContent += "|}\r\n\r\n<noinclude>[[Category: Learnsets]]</noinclude>";
-
-                        // Write main Pokemon data entry
-                        bool learnset_completed = WriteToWiki(strippedName + "/Learnset", learnsetFileContent);
-                        if (!learnset_completed) // Check for duplicate form name and append form number as a fallback
-                            learnset_completed = WriteToWiki(strippedName + "_" + form + "/Learnset", learnsetFileContent);
-
-
-                        // Write stats entry
-                        string statsFileContent = "{{StatBars|" +
-                            "\r\n|hp=" + formData.BaseHP +
-                            "\r\n|atk=" + formData.BaseAtk +
-                            "\r\n|def=" + formData.BaseDef +
-                            "\r\n|spa=" + formData.BaseMAtk +
-                            "\r\n|spd=" + formData.BaseMDef +
-                            "\r\n|spe=" + formData.BaseSpeed +
-                            "\r\n}}\n<noinclude>[[Category: Pokémon stat pages]]</noinclude>";
-
-                        bool stats_completed = WriteToWiki(strippedName + "/Stats", statsFileContent);
-                        if (!stats_completed) // Check for duplicate form name and append form number as a fallback
-                            stats_completed = WriteToWiki(strippedName + "_" + form + "/Stats", statsFileContent);
                     }
                 }
             }
@@ -619,10 +634,12 @@ namespace PMDC.Dev
                     // End the tab
                     fileContent += "\r\n<tabs>";
                 }
+                /*
                 foreach (string nameUsed in namesAlreadyUsed)
                 {
                     Console.WriteLine(nameUsed);
                 }
+                */
                 fileContent += "\r\n";
 
                 // Write to file
