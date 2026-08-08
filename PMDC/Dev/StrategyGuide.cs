@@ -626,13 +626,13 @@ namespace PMDC.Dev
                             currentFormNumber = 0;
                         }
 
-                        fileContent += String.Format("\r\n<tab name=\"{0}\">{{:{1}/Data|PokemonInfobox}}</tab>", formName, strippedName);
+                        fileContent += ("\r\n<tab name=\"" + formName + "\">{{:" + strippedName + "/Data|PokemonInfobox}}</tab>");
 
                         namesAlreadyUsed.Add(strippedName);
                     }
 
                     // End the tab
-                    fileContent += "\r\n<tabs>";
+                    fileContent += "\r\n</tabs>";
                 }
                 /*
                 foreach (string nameUsed in namesAlreadyUsed)
