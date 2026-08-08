@@ -1,21 +1,30 @@
+using DynamicData;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using PMDC.Data;
+using PMDC.Dungeon;
+using RogueElements;
+using RogueEssence;
+using RogueEssence.Content;
+using RogueEssence.Data;
+using RogueEssence.Dungeon;
+using RogueEssence.LevelGen;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using RogueElements;
-using RogueEssence.Data;
-using RogueEssence.Content;
-using RogueEssence.Dungeon;
-using RogueEssence.LevelGen;
-using RogueEssence;
-using PMDC.Data;
-using PMDC.Dungeon;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Linq;
 
 namespace PMDC.Dev
 {
     public static class StrategyGuide
     {
         private const int TOTAL_CHUNKS = 60;
+
+
+        public static void DeleteWiki()
+        {
+            if (Directory.Exists(PathMod.APP_PATH + "WIKI/"))
+                Directory.Delete(PathMod.APP_PATH + "WIKI/", true);
+        }
 
         private static bool WriteToWiki(string name, string content)
         {
@@ -296,6 +305,354 @@ namespace PMDC.Dev
                     if (!completed)
                         completed = WriteToWiki(localName + " (Item)/Data", fileContent);
                 }
+            }
+        }
+
+        public static void PrintMonsterWiki()
+        {
+            List<string> itemKeys = DataManager.Instance.DataIndices[DataManager.DataType.Monster].GetOrderedKeys(true);
+            for (int ii = 0; ii < itemKeys.Count; ii++)
+            {
+                string key = itemKeys[ii];
+                MonsterData entry = DataManager.Instance.GetMonster(key);
+                if (entry.Released && entry.IndexNum > 0)
+                {
+                    // Get the Pokemon name
+                    string localName = entry.Name.ToLocal();
+                    int lastValidForm = 0;
+                    
+                    for (int form = 0; form < entry.Forms.Count; form++)
+                    {
+                        MonsterFormData formData = (MonsterFormData)entry.Forms[form];
+                        // Check if this is a cosmetic form
+                        bool formIsCosmetic = false;
+                        if (form > 0)
+                        {
+                            formIsCosmetic = EvaluateCosmeticForm(entry, form, lastValidForm);
+                        }
+                        // Console.WriteLine(localName + "_" + form + ": " + formIsCosmetic);
+
+                        if (!formIsCosmetic && formData.Released)
+                        {
+                            // Set the last form used for comparison to cosmetic formes
+                            lastValidForm = form;
+
+                            string formName = formData.FormName.DefaultText;
+                            string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+
+
+                            // Get type names
+                            ElementData element1 = DataManager.Instance.GetElement(formData.Element1);
+                            ElementData element2 = DataManager.Instance.GetElement(formData.Element2);
+
+                            // Get ability names
+                            IntrinsicData intrinsic1 = DataManager.Instance.GetIntrinsic(formData.Intrinsic1);
+                            IntrinsicData intrinsic2 = DataManager.Instance.GetIntrinsic(formData.Intrinsic2);
+                            IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
+
+                            // Create main Pokemon data entry
+                            string dataFileContent = "{{{{{1|PokemonData}}}" +
+                                "\r\n|pokemon_name=" + formName +
+                                "\r\n|pokemon_id=" + key +
+                                "\r\n|form_id=" + form +
+                                "\r\n|type1=" + element1.Name.DefaultText +
+                                "\r\n|type2=" + element2.Name.DefaultText +
+                                "\r\n|ability1=" + intrinsic1.Name.DefaultText +
+                                "\r\n|ability2=" + intrinsic2.Name.DefaultText +
+                                "\r\n|ability3=" + intrinsic3.Name.DefaultText +
+                                "\r\n|recruit=" + entry.JoinRate +
+                                "\r\n|portrait=Portrait_" + strippedName + ".png" +
+                                "\r\n}}";
+
+                            // Write main Pokemon data entry
+                            bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
+                            if (!completed) // Check for duplicate form name and append form number as a fallback
+                                completed = WriteToWiki(strippedName + "_" + form + "/Data", dataFileContent);
+
+
+                            // Write learnset data
+
+                            // Level-up learnset
+                            string learnsetFileContent = "<h6>By level up</h6>\n{|- class=\"wikitable\"\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.LevelSkills.Count; skill_index++)
+                            {
+                                LevelUpSkill level_up_skill = formData.LevelSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(level_up_skill.Skill);
+                                learnsetFileContent += ("|  " + level_up_skill.Level + " {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
+                            }
+                            // TM learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>By TM</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.TeachSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.TeachSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
+                            }
+                            // Tutor learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>By Move Tutor</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.SecretSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.SecretSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
+                            }
+                            // Tutor learnset
+                            learnsetFileContent += "|}\r\n\r\n<h6>Egg Moves</h6>\r\n{|- class=\"wikitable\"\r\n{{LearnsetHeader}}\r\n";
+                            for (int skill_index = 0; skill_index < formData.SharedSkills.Count; skill_index++)
+                            {
+                                LearnableSkill learnable_skill = formData.SharedSkills[skill_index];
+                                SkillData current_skill = DataManager.Instance.GetSkill(learnable_skill.Skill);
+                                learnsetFileContent += ("| {{:" + current_skill.Name.DefaultText + "/Data|LearnsetRow}}\r\n");
+                            }
+                            learnsetFileContent += "|}\r\n\r\n<noinclude>[[Category: Learnsets]]</noinclude>";
+
+                            // Write main Pokemon data entry
+                            bool learnset_completed = WriteToWiki(strippedName + "/Learnset", learnsetFileContent);
+                            if (!learnset_completed) // Check for duplicate form name and append form number as a fallback
+                                learnset_completed = WriteToWiki(strippedName + "_" + form + "/Learnset", learnsetFileContent);
+
+
+                            // Write stats entry
+                            string statsFileContent = "{{StatBars|" +
+                                "\r\n|hp=" + formData.BaseHP +
+                                "\r\n|atk=" + formData.BaseAtk +
+                                "\r\n|def=" + formData.BaseDef +
+                                "\r\n|spa=" + formData.BaseMAtk +
+                                "\r\n|spd=" + formData.BaseMDef +
+                                "\r\n|spe=" + formData.BaseSpeed +
+                                "\r\n}}\n<noinclude>[[Category: Pokémon stat pages]]</noinclude>";
+
+                            bool stats_completed = WriteToWiki(strippedName + "/Stats", statsFileContent);
+                            if (!stats_completed) // Check for duplicate form name and append form number as a fallback
+                                stats_completed = WriteToWiki(strippedName + "_" + form + "/Stats", statsFileContent);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static List<MonsterFormData> EvaluateMonsterEvolution(MonsterData startingMonster, int baseForm, List<PromoteBranch> evolutionBranches)
+        {
+            List<MonsterFormData> validEvolutionForms = new List<MonsterFormData>();
+
+            for (int evolutionBranchIndex = 0; evolutionBranchIndex < evolutionBranches.Count; evolutionBranchIndex++)
+            {
+                PromoteBranch evolutionBranch = evolutionBranches[evolutionBranchIndex];
+                MonsterData evolvedMonster = DataManager.Instance.GetMonster(evolutionBranch.Result);
+                int lastValidForm = 0;
+
+                for (int formIndex = 0; formIndex < evolvedMonster.Forms.Count; formIndex++)
+                {
+                    BaseMonsterForm evolvedForm = evolvedMonster.Forms[formIndex];
+
+                    if (evolvedForm.PromoteForm == baseForm)
+                    {
+                        // Check if this form is purely cosmetic
+                        bool formIsCosmetic = false;
+                        if (formIndex > 0)
+                        {
+                            formIsCosmetic = EvaluateCosmeticForm(evolvedMonster, formIndex, lastValidForm);
+                        }
+                        if (!formIsCosmetic)
+                        {
+                            validEvolutionForms.Add((MonsterFormData)evolvedForm);
+                            lastValidForm = formIndex;
+                        }
+
+                        // Check this monster's evolved forms
+                        List<PromoteBranch> secondEvolutionBranches = evolvedMonster.Promotions;
+
+                        for (int secondEvolutionBranchIndex = 0; secondEvolutionBranchIndex < secondEvolutionBranches.Count; secondEvolutionBranchIndex++)
+                        {
+                            PromoteBranch secondEvolutionBranch = secondEvolutionBranches[secondEvolutionBranchIndex];
+                            MonsterData secondEvolvedMonster = DataManager.Instance.GetMonster(secondEvolutionBranch.Result);
+                            int lastValidSecondForm = 0;
+
+                            for (int secondFormIndex = 0; secondFormIndex < secondEvolvedMonster.Forms.Count; secondFormIndex++)
+                            {
+                                BaseMonsterForm secondEvolvedForm = secondEvolvedMonster.Forms[secondFormIndex];
+                                if (secondEvolvedForm.PromoteForm == baseForm)
+                                {
+                                    // Check if this form is purely cosmetic
+                                    bool secondFormIsCosmetic = false;
+                                    if (secondFormIndex > 0)
+                                    {
+                                        secondFormIsCosmetic = EvaluateCosmeticForm(secondEvolvedMonster, secondFormIndex, lastValidSecondForm);
+                                    }
+                                    if (!secondFormIsCosmetic)
+                                    {
+                                        validEvolutionForms.Add((MonsterFormData)secondEvolvedForm);
+                                        lastValidSecondForm = secondFormIndex;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return validEvolutionForms;
+        }
+
+        public static bool EvaluateCosmeticForm(MonsterData evaluatedMonster, int evaluatedFormIndex, int baseFormIndex = 0)
+        {
+            // Check if this form is purely cosmetic
+            bool formIsCosmetic = false;
+            MonsterFormData baseEvolvedData = (MonsterFormData)evaluatedMonster.Forms[baseFormIndex];
+            MonsterFormData evolvedData = (MonsterFormData)evaluatedMonster.Forms[evaluatedFormIndex];
+
+            // Compare types to see if they're identical
+            bool identicalElements = false;
+            if ((baseEvolvedData.Element1 == evolvedData.Element1) && (baseEvolvedData.Element2 == evolvedData.Element2))
+            {
+                identicalElements = true;
+            }
+
+            // Compare abilities to see if they're identical
+            bool identicalAbilities = false;
+            if ((baseEvolvedData.Intrinsic1 == evolvedData.Intrinsic1) && (baseEvolvedData.Intrinsic2 == evolvedData.Intrinsic2) && (baseEvolvedData.Intrinsic3 == evolvedData.Intrinsic3))
+            {
+                identicalAbilities = true;
+            }
+
+            // Compare stats to see if they're identical
+            bool identicalStats = false;
+
+            if ((baseEvolvedData.BaseAtk == evolvedData.BaseAtk) && (baseEvolvedData.BaseDef == evolvedData.BaseDef) && (baseEvolvedData.BaseMAtk == evolvedData.BaseMAtk) && (baseEvolvedData.BaseMDef == evolvedData.BaseMDef) && (baseEvolvedData.BaseSpeed == evolvedData.BaseSpeed))
+            {
+                identicalStats = true;
+            }
+
+            if (identicalElements && identicalAbilities && identicalStats)
+            {
+                formIsCosmetic = true;
+            }
+
+            return formIsCosmetic;
+        }
+
+        public static void PrintMonsterFamilyWiki()
+        {
+            // Get a list of first-form Pokemon to serve as the evolution tree's roots
+            List<string> itemKeys = DataManager.Instance.DataIndices[DataManager.DataType.Monster].GetOrderedKeys(true);
+            List<MonsterData> firstFormMonsters = new List<MonsterData>();
+            for (int ii = 0; ii < itemKeys.Count; ii++)
+            {
+                string key = itemKeys[ii];
+                MonsterData entry = DataManager.Instance.GetMonster(key);
+                if (entry.Released)
+                {
+                    if (entry.PromoteFrom == "")
+                    {
+                        if (entry.IndexNum > 0)
+                        {
+                            firstFormMonsters.Add(entry);
+                        }
+                    }
+                }
+            }
+
+            Console.WriteLine("Begin printing Pokemon families");
+            // For each Pokemon, create lists containing each form's evolution tree
+            for (int ii = 0; ii < firstFormMonsters.Count; ii++)
+            {
+                ProgressBar("Creating monster family pages...", "Done.", TOTAL_CHUNKS, ii, firstFormMonsters.Count);
+                List<List<MonsterFormData>> monsterFamilyData = new List<List<MonsterFormData>>();
+
+                // Get the base form
+                MonsterData startingMonster = firstFormMonsters[ii];
+                bool singleStageFamily = true;
+                int lastValidForm = 0;
+                for (int form = 0; form < startingMonster.Forms.Count; form++)
+                {
+                    bool formIsCosmetic = false;
+                    if (form > 0)
+                    {
+                        formIsCosmetic = EvaluateCosmeticForm(startingMonster, form, lastValidForm);
+                    }
+                    if (!formIsCosmetic)
+                    {
+                        lastValidForm = form;
+                        List<MonsterFormData> currentEvolutionBranch = new List<MonsterFormData>();
+                        currentEvolutionBranch.Add((MonsterFormData)startingMonster.Forms[form]);
+
+                        // Get list of valid evolutions
+                        List<MonsterFormData> validEvolutions = EvaluateMonsterEvolution(startingMonster, form, startingMonster.Promotions);
+                        for (int validEvolutionIndex = 0; validEvolutionIndex < validEvolutions.Count; validEvolutionIndex++)
+                        {
+                            singleStageFamily = false;
+                            MonsterFormData currentEvolution = validEvolutions[validEvolutionIndex];
+                            if (currentEvolution.Released)
+                            {
+                                if (currentEvolutionBranch.IndexOf(currentEvolution) == -1)
+                                {
+                                    currentEvolutionBranch.Add(currentEvolution);
+                                }
+                            }
+                        }
+
+                        // Add this branch of the family tree to the family list
+                        monsterFamilyData.Add(currentEvolutionBranch);
+                    }
+                }
+
+                // Keep track of names that have already been used in the data structure
+                List<String> namesAlreadyUsed = new List<string>();
+                int currentFormNumber = 0;
+
+                // Print the Pokemon family page
+                string fileContent = "__NOTOC__";
+
+                for (int evolutionBranchIndex = 0; evolutionBranchIndex < monsterFamilyData.Count; evolutionBranchIndex++)
+                {
+                    // Create tabs for each evolution branch
+                    fileContent += "\r\n\r\n<tabs>";
+
+                    // For each Pokemon in the branch, add a tab for it
+                    for(int familyMemberIndex = 0; familyMemberIndex < monsterFamilyData[evolutionBranchIndex].Count; familyMemberIndex++)
+                    {
+                        MonsterFormData currentMonsterForm = monsterFamilyData[evolutionBranchIndex][familyMemberIndex];
+
+                        string formName = currentMonsterForm.FormName.DefaultText;
+                        string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+
+                        if (namesAlreadyUsed.Contains(strippedName))
+                        {
+                            currentFormNumber += 1;
+                            strippedName = strippedName + "_" + currentFormNumber.ToString();
+                        }
+                        else
+                        {
+                            currentFormNumber = 0;
+                        }
+
+                        fileContent += String.Format("\r\n<tab name=\"{0}\">{{:{1}/Data|PokemonInfobox}}</tab>", formName, strippedName);
+
+                        namesAlreadyUsed.Add(strippedName);
+                    }
+
+                    // End the tab
+                    fileContent += "\r\n<tabs>";
+                }
+                /*
+                foreach (string nameUsed in namesAlreadyUsed)
+                {
+                    Console.WriteLine(nameUsed);
+                }
+                */
+                fileContent += "\r\n";
+
+                // Write to file
+                string firstFormStrippedName = startingMonster.Name.DefaultText;
+                firstFormStrippedName = firstFormStrippedName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+                if (!singleStageFamily)
+                {
+                    firstFormStrippedName += "_family";
+                }
+
+                bool completed = WriteToWiki(firstFormStrippedName, fileContent);
+                if (!completed) // Check for duplicate form name and append form number as a fallback
+                    completed = WriteToWiki(firstFormStrippedName + " (Pokemon)", fileContent);
             }
         }
 
