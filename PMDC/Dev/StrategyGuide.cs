@@ -573,8 +573,10 @@ namespace PMDC.Dev
 
                 // Get the base form
                 MonsterData startingMonster = firstFormMonsters[ii];
+
                 bool singleStageFamily = true;
                 int lastValidForm = 0;
+
                 for (int form = 0; form < startingMonster.Forms.Count; form++)
                 {
                     bool formIsCosmetic = false;
@@ -584,7 +586,9 @@ namespace PMDC.Dev
                     }
                     if (!formIsCosmetic)
                     {
+                        // Set this form as the one to compare stats to
                         lastValidForm = form;
+
                         List<MonsterFormData> currentEvolutionBranch = new List<MonsterFormData>();
                         currentEvolutionBranch.Add((MonsterFormData)startingMonster.Forms[form]);
 
@@ -610,6 +614,7 @@ namespace PMDC.Dev
 
                 // Keep track of names that have already been used in the data structure
                 List<String> namesAlreadyUsed = new List<string>();
+                List<String> redirectNames = new List<string>();
                 int currentFormNumber = 0;
 
                 // Print the Pokemon family page
@@ -641,6 +646,7 @@ namespace PMDC.Dev
                         fileContent += ("\r\n<tab name=\"" + formName + "\">{{:" + strippedName + "/Data|PokemonInfobox}}</tab>");
 
                         namesAlreadyUsed.Add(strippedName);
+                        redirectNames.Add(formName);
                     }
 
                     // End the tab
@@ -665,6 +671,22 @@ namespace PMDC.Dev
                 bool completed = WriteToWiki(firstFormStrippedName, fileContent);
                 if (!completed) // Check for duplicate form name and append form number as a fallback
                     completed = WriteToWiki(firstFormStrippedName + " (Pokemon)", fileContent);
+
+                // Create redirect pages
+                if (!singleStageFamily)
+                {
+                    for (int redirectNameIndex = 0; redirectNameIndex < namesAlreadyUsed.Count; redirectNameIndex++)
+                    {
+                        if (redirectNameIndex == 0)
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "]]");
+                        }
+                        else
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "#" + redirectNames[redirectNameIndex] + "]]");
+                        }
+                    }
+                }
             }
         }
 
