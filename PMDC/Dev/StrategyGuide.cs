@@ -351,18 +351,30 @@ namespace PMDC.Dev
                             IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
 
                             // Create main Pokemon data entry
-                            string dataFileContent = "{{{{{1|PokemonData}}}" +
-                                "\r\n|pokemon_name=" + formName +
-                                "\r\n|pokemon_id=" + key +
-                                "\r\n|form_id=" + form +
-                                "\r\n|type1=" + element1.Name.DefaultText +
-                                "\r\n|type2=" + element2.Name.DefaultText +
-                                "\r\n|ability1=" + intrinsic1.Name.DefaultText +
-                                "\r\n|ability2=" + intrinsic2.Name.DefaultText +
-                                "\r\n|ability3=" + intrinsic3.Name.DefaultText +
-                                "\r\n|recruit=" + entry.JoinRate +
-                                "\r\n|portrait=Portrait_" + strippedName + ".png" +
-                                "\r\n}}";
+                            string dataFileContent = "{{{{{1|PokemonData}}}";
+                            dataFileContent += "\r\n|pokemon_name=" + formName;
+                            dataFileContent += "\r\n|pokemon_id=" + key;
+                            if (entry.Forms.Count > 1)
+                            {
+                                dataFileContent += "\r\n|form_id=" + form;
+                            }
+                            dataFileContent += "\r\n|type1=" + element1.Name.DefaultText;
+                            if (element2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|type2=" + element2.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|ability1=" + intrinsic1.Name.DefaultText;
+                            if (intrinsic2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability2=" + intrinsic2.Name.DefaultText;
+                            }
+                            if (intrinsic3.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability3=" + intrinsic3.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|recruit=" + entry.JoinRate;
+                            dataFileContent += "\r\n|portrait=Portrait_" + strippedName + ".png";
+                            dataFileContent += "\r\n}}";
 
                             // Write main Pokemon data entry
                             bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
