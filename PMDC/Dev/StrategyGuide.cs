@@ -501,9 +501,6 @@ namespace PMDC.Dev
             foreach (StartChar startchar in DataManager.Instance.Start.Chars)
                 DevHelper.AddWithEvos(foundSpecies, new MonsterID(startchar.ID.Species, startchar.ID.Form, "", Gender.Unknown), "STARTER", ZoneLoc.Invalid);
 
-            List<string[]> stats = new List<string[]>();
-            stats.Add(new string[4] { "###", "Name", "Join %", "Found In" });
-
             for (int ii = 0; ii < monsterKeys.Count; ii++)
             {
                 ProgressBar("Creating encounters guide...", "Done.", TOTAL_CHUNKS, ii, monsterKeys.Count);
@@ -570,6 +567,7 @@ namespace PMDC.Dev
                                         if (specialDict.ContainsKey(zz) && specialDict[zz].Contains(yy))
                                         {
                                             string locString = String.Format("{0} {1}S", mainZone.Name.ToLocal(), yy + 1);
+                                            string formattedZoneName = mainZone.Name.ToLocal();
                                             foreach (var step in mainZone.Segments[yy].ZoneSteps)
                                             {
                                                 var startStep = step as FloorNameIDZoneStep;
@@ -579,8 +577,13 @@ namespace PMDC.Dev
                                                     break;
                                                 }
                                             }
+                                            locString = locString.Replace(mainZone.Name.ToLocal(), formattedZoneName);
                                             if (tag != "")
-                                                locString = String.Format("[{0}] {1}", tag, locString);
+                                                locString = String.Format("[{0}] [[{1}", tag, locString);
+                                            else
+                                                locString = "[[" + locString;
+                                            int place = locString.LastIndexOf(" ");
+                                            locString = locString.Remove(place, 1).Insert(place, "]] ");
                                             encounterMsg.Add(locString);
                                         }
 
@@ -588,7 +591,8 @@ namespace PMDC.Dev
                                         {
                                             List<string> ranges = combineFloorRanges(floorDict[zz][yy]);
                                             string rangeString = String.Join(",", ranges.ToArray());
-                                            string locString = String.Format("{0} {1}S {2}F", mainZone.Name.ToLocal(), yy + 1, rangeString);
+                                            string formattedZoneName = mainZone.Name.ToLocal();
+                                            string locString = String.Format("{0} {1}S {2}F", formattedZoneName, yy + 1, rangeString);
                                             foreach (var step in mainZone.Segments[yy].ZoneSteps)
                                             {
                                                 var startStep = step as FloorNameIDZoneStep;
@@ -598,8 +602,15 @@ namespace PMDC.Dev
                                                     break;
                                                 }
                                             }
+                                            locString = locString.Replace(mainZone.Name.ToLocal(), formattedZoneName);
                                             if (tag != "")
-                                                locString = String.Format("[{0}] {1}", tag, locString);
+                                                locString = String.Format("[{0}] [[{1}", tag, locString);
+                                            else
+                                                locString = "[[" + locString;
+
+                                            int place = locString.LastIndexOf(" ");
+                                            locString = locString.Remove(place, 1).Insert(place, "]] ");
+
                                             encounterMsg.Add(locString);
                                         }
                                     }
@@ -612,7 +623,7 @@ namespace PMDC.Dev
                                 encounterMsg.Add("Starter");
 
                             if (encounterMsg.Count > 0)
-                                encounterStr = String.Join(", ", encounterMsg.ToArray());
+                                encounterStr = String.Join("\n", encounterMsg.ToArray());
                         }
                     }
                     else
@@ -629,7 +640,7 @@ namespace PMDC.Dev
                     {
                         formIndexNumber = 0;
                     }
-                    Console.WriteLine(monsterName + " " + encounterStr);
+                    //Console.WriteLine(monsterName + "\n " + encounterStr + "\n\n");
                     encounterDict.Add(monsterName, encounterStr);
                 }
             }
