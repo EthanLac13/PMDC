@@ -351,18 +351,30 @@ namespace PMDC.Dev
                             IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
 
                             // Create main Pokemon data entry
-                            string dataFileContent = "{{{{{1|PokemonData}}}" +
-                                "\r\n|pokemon_name=" + formName +
-                                "\r\n|pokemon_id=" + key +
-                                "\r\n|form_id=" + form +
-                                "\r\n|type1=" + element1.Name.DefaultText +
-                                "\r\n|type2=" + element2.Name.DefaultText +
-                                "\r\n|ability1=" + intrinsic1.Name.DefaultText +
-                                "\r\n|ability2=" + intrinsic2.Name.DefaultText +
-                                "\r\n|ability3=" + intrinsic3.Name.DefaultText +
-                                "\r\n|recruit=" + entry.JoinRate +
-                                "\r\n|portrait=Portrait_" + strippedName + ".png" +
-                                "\r\n}}";
+                            string dataFileContent = "{{{{{1|PokemonData}}}";
+                            dataFileContent += "\r\n|pokemon_name=" + formName;
+                            dataFileContent += "\r\n|pokemon_id=" + key;
+                            if (entry.Forms.Count > 1)
+                            {
+                                dataFileContent += "\r\n|form_id=" + form;
+                            }
+                            dataFileContent += "\r\n|type1=" + element1.Name.DefaultText;
+                            if (element2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|type2=" + element2.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|ability1=" + intrinsic1.Name.DefaultText;
+                            if (intrinsic2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability2=" + intrinsic2.Name.DefaultText;
+                            }
+                            if (intrinsic3.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability3=" + intrinsic3.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|recruit=" + entry.JoinRate;
+                            dataFileContent += "\r\n|portrait=Portrait_" + strippedName + ".png";
+                            dataFileContent += "\r\n}}";
 
                             // Write main Pokemon data entry
                             bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
@@ -561,8 +573,10 @@ namespace PMDC.Dev
 
                 // Get the base form
                 MonsterData startingMonster = firstFormMonsters[ii];
+
                 bool singleStageFamily = true;
                 int lastValidForm = 0;
+
                 for (int form = 0; form < startingMonster.Forms.Count; form++)
                 {
                     bool formIsCosmetic = false;
@@ -572,7 +586,9 @@ namespace PMDC.Dev
                     }
                     if (!formIsCosmetic)
                     {
+                        // Set this form as the one to compare stats to
                         lastValidForm = form;
+
                         List<MonsterFormData> currentEvolutionBranch = new List<MonsterFormData>();
                         currentEvolutionBranch.Add((MonsterFormData)startingMonster.Forms[form]);
 
@@ -598,6 +614,7 @@ namespace PMDC.Dev
 
                 // Keep track of names that have already been used in the data structure
                 List<String> namesAlreadyUsed = new List<string>();
+                List<String> redirectNames = new List<string>();
                 int currentFormNumber = 0;
 
                 // Print the Pokemon family page
@@ -626,13 +643,14 @@ namespace PMDC.Dev
                             currentFormNumber = 0;
                         }
 
-                        fileContent += String.Format("\r\n<tab name=\"{0}\">{{:{1}/Data|PokemonInfobox}}</tab>", formName, strippedName);
+                        fileContent += ("\r\n<tab name=\"" + formName + "\">{{:" + strippedName + "/Data|PokemonInfobox}}</tab>");
 
                         namesAlreadyUsed.Add(strippedName);
+                        redirectNames.Add(formName);
                     }
 
                     // End the tab
-                    fileContent += "\r\n<tabs>";
+                    fileContent += "\r\n</tabs>";
                 }
                 /*
                 foreach (string nameUsed in namesAlreadyUsed)
@@ -653,6 +671,22 @@ namespace PMDC.Dev
                 bool completed = WriteToWiki(firstFormStrippedName, fileContent);
                 if (!completed) // Check for duplicate form name and append form number as a fallback
                     completed = WriteToWiki(firstFormStrippedName + " (Pokemon)", fileContent);
+
+                // Create redirect pages
+                if (!singleStageFamily)
+                {
+                    for (int redirectNameIndex = 0; redirectNameIndex < namesAlreadyUsed.Count; redirectNameIndex++)
+                    {
+                        if (redirectNameIndex == 0)
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "]]");
+                        }
+                        else
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "#" + redirectNames[redirectNameIndex] + "]]");
+                        }
+                    }
+                }
             }
         }
 
