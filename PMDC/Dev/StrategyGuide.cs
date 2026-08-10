@@ -307,6 +307,29 @@ namespace PMDC.Dev
                 }
             }
         }
+        public static void PrintAbilityWiki()
+        {
+            List<string> abilityKeys = DataManager.Instance.DataIndices[DataManager.DataType.Intrinsic].GetOrderedKeys(true);
+            for (int ii = 0; ii < abilityKeys.Count; ii++)
+            {
+                ProgressBar("Creating ability pages...", "Done.", TOTAL_CHUNKS, ii, abilityKeys.Count);
+                string key = abilityKeys[ii];
+                IntrinsicData entry = DataManager.Instance.GetIntrinsic(key);
+                if (entry.Released)
+                {
+                    string localName = entry.Name.ToLocal();
+                    string fileContent = "{{{{{1|AbilityData}}}" +
+                        "\r\n|ability_name=" + localName +
+                        "\r\n|ability_id=" + key +
+                        "\r\n|description=" + entry.Desc.ToLocal() +
+                        "\r\n}}";
+
+                    bool completed = WriteToWiki(localName + "/Data", fileContent);
+                    if (!completed)
+                        completed = WriteToWiki(localName + " (Ability)/Data", fileContent);
+                }
+            }
+        }
 
         public static void PrintMonsterWiki()
         {

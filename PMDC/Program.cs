@@ -587,7 +587,7 @@ namespace PMDC
                     //just print a guidebook and exit
                     StrategyGuide.PrintMoveWiki();
                     StrategyGuide.PrintItemWiki();
-                    //StrategyGuide.PrintAbilityWiki();
+                    StrategyGuide.PrintAbilityWiki();
                     StrategyGuide.PrintMonsterWiki();
                     StrategyGuide.PrintMonsterFamilyWiki();
                     //StrategyGuide.PrintDungeonWiki();
