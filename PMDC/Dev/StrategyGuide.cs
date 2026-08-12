@@ -307,9 +307,34 @@ namespace PMDC.Dev
                 }
             }
         }
+        public static void PrintAbilityWiki()
+        {
+            List<string> abilityKeys = DataManager.Instance.DataIndices[DataManager.DataType.Intrinsic].GetOrderedKeys(true);
+            for (int ii = 0; ii < abilityKeys.Count; ii++)
+            {
+                ProgressBar("Creating ability pages...", "Done.", TOTAL_CHUNKS, ii, abilityKeys.Count);
+                string key = abilityKeys[ii];
+                IntrinsicData entry = DataManager.Instance.GetIntrinsic(key);
+                if (entry.Released)
+                {
+                    string localName = entry.Name.ToLocal();
+                    string fileContent = "{{{{{1|AbilityData}}}" +
+                        "\r\n|ability_name=" + localName +
+                        "\r\n|ability_id=" + key +
+                        "\r\n|description=" + entry.Desc.ToLocal() +
+                        "\r\n}}";
+
+                    bool completed = WriteToWiki(localName + "/Data", fileContent);
+                    if (!completed)
+                        completed = WriteToWiki(localName + " (Ability)/Data", fileContent);
+                }
+            }
+        }
 
         public static void PrintMonsterWiki()
         {
+            Dictionary<string, string> encounterDict = PrintEncounterWiki();
+
             List<string> itemKeys = DataManager.Instance.DataIndices[DataManager.DataType.Monster].GetOrderedKeys(true);
             for (int ii = 0; ii < itemKeys.Count; ii++)
             {
@@ -351,18 +376,30 @@ namespace PMDC.Dev
                             IntrinsicData intrinsic3 = DataManager.Instance.GetIntrinsic(formData.Intrinsic3);
 
                             // Create main Pokemon data entry
-                            string dataFileContent = "{{{{{1|PokemonData}}}" +
-                                "\r\n|pokemon_name=" + formName +
-                                "\r\n|pokemon_id=" + key +
-                                "\r\n|form_id=" + form +
-                                "\r\n|type1=" + element1.Name.DefaultText +
-                                "\r\n|type2=" + element2.Name.DefaultText +
-                                "\r\n|ability1=" + intrinsic1.Name.DefaultText +
-                                "\r\n|ability2=" + intrinsic2.Name.DefaultText +
-                                "\r\n|ability3=" + intrinsic3.Name.DefaultText +
-                                "\r\n|recruit=" + entry.JoinRate +
-                                "\r\n|portrait=Portrait_" + strippedName + ".png" +
-                                "\r\n}}";
+                            string dataFileContent = "{{{{{1|PokemonData}}}";
+                            dataFileContent += "\r\n|pokemon_name=" + formName;
+                            dataFileContent += "\r\n|pokemon_id=" + key;
+                            if (entry.Forms.Count > 1)
+                            {
+                                dataFileContent += "\r\n|form_id=" + form;
+                            }
+                            dataFileContent += "\r\n|type1=" + element1.Name.DefaultText;
+                            if (element2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|type2=" + element2.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|ability1=" + intrinsic1.Name.DefaultText;
+                            if (intrinsic2.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability2=" + intrinsic2.Name.DefaultText;
+                            }
+                            if (intrinsic3.Name.DefaultText != "None")
+                            {
+                                dataFileContent += "\r\n|ability3=" + intrinsic3.Name.DefaultText;
+                            }
+                            dataFileContent += "\r\n|recruit=" + entry.JoinRate;
+                            dataFileContent += "\r\n|portrait=Portrait_" + strippedName + ".png";
+                            dataFileContent += "\r\n}}";
 
                             // Write main Pokemon data entry
                             bool completed = WriteToWiki(strippedName + "/Data", dataFileContent);
@@ -425,10 +462,190 @@ namespace PMDC.Dev
                             bool stats_completed = WriteToWiki(strippedName + "/Stats", statsFileContent);
                             if (!stats_completed) // Check for duplicate form name and append form number as a fallback
                                 stats_completed = WriteToWiki(strippedName + "_" + form + "/Stats", statsFileContent);
+
+                            // Write locations entry
+                            if (encounterDict.ContainsKey(formName))
+                            { 
+                                string locationFileContent = encounterDict[formName];
+
+                                bool location_completed = WriteToWiki(strippedName + "/Location", locationFileContent);
+                                if (!location_completed) // Check for duplicate form name and append form number as a fallback
+                                { 
+                                    if (encounterDict.ContainsKey(formName + "_" + form))
+                                    {
+                                        locationFileContent = encounterDict[formName + "_" + form];
+                                        location_completed = WriteToWiki(strippedName + "_" + form + "/Location", locationFileContent);
+                                    }
+                                    else
+                                    {
+                                        locationFileContent = "N/A";
+                                        location_completed = WriteToWiki(strippedName + "_" + form + "/Location", locationFileContent);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        public static Dictionary<string, string> PrintEncounterWiki()
+        {
+            Dictionary<string, string> encounterDict = new Dictionary<string, string>();
+
+            List<string> monsterKeys = DataManager.Instance.DataIndices[DataManager.DataType.Monster].GetOrderedKeys(true);
+            ProgressBar("Creating encounters guide...", "Done.", TOTAL_CHUNKS, 0, monsterKeys.Count);
+
+            Dictionary<MonsterID, HashSet<(string tag, ZoneLoc encounter)>> foundSpecies = DevHelper.GetAllAppearingMonsters(true);
+
+            foreach (StartChar startchar in DataManager.Instance.Start.Chars)
+                DevHelper.AddWithEvos(foundSpecies, new MonsterID(startchar.ID.Species, startchar.ID.Form, "", Gender.Unknown), "STARTER", ZoneLoc.Invalid);
+
+            for (int ii = 0; ii < monsterKeys.Count; ii++)
+            {
+                ProgressBar("Creating encounters guide...", "Done.", TOTAL_CHUNKS, ii, monsterKeys.Count);
+                string key = monsterKeys[ii];
+                MonsterEntrySummary summary = (MonsterEntrySummary)DataManager.Instance.DataIndices[DataManager.DataType.Monster].Get(key);
+                MonsterData data = DataManager.Instance.GetMonster(key);
+                int formIndexNumber = 0;
+                for (int jj = 0; jj < summary.Forms.Count; jj++)
+                {
+                    MonsterFormData formData = (MonsterFormData)data.Forms[jj];
+                    if (formData.Temporary)
+                        continue;
+
+                    string encounterStr = "UNKNOWN";
+                    if (summary.Released && formData.Released)
+                    {
+                        MonsterID monId = new MonsterID(key, jj, "", Gender.Unknown);
+                        if (foundSpecies.ContainsKey(monId))
+                        {
+                            bool evolve = false;
+                            bool starter = false;
+
+                            Dictionary<string, (Dictionary<string, HashSet<int>> specialDict, Dictionary<string, Dictionary<int, HashSet<int>>> floorDict)> foundDict = new Dictionary<string, (Dictionary<string, HashSet<int>> specialDict, Dictionary<string, Dictionary<int, HashSet<int>>> floorDict)>();
+
+                            foreach ((string tag, ZoneLoc encounter) in foundSpecies[monId])
+                            {
+                                if (!foundDict.ContainsKey(tag))
+                                    foundDict[tag] = (new Dictionary<string, HashSet<int>>(), new Dictionary<string, Dictionary<int, HashSet<int>>>());
+                                Dictionary<string, HashSet<int>> specialDict = foundDict[tag].specialDict;
+                                Dictionary<string, Dictionary<int, HashSet<int>>> floorDict = foundDict[tag].floorDict;
+
+                                if (tag == "STARTER")
+                                    starter = true;
+                                else if (tag == "EVOLVE")
+                                    evolve = true;
+                                else if (encounter.StructID.ID == -1)
+                                {
+                                    if (!specialDict.ContainsKey(encounter.ID))
+                                        specialDict[encounter.ID] = new HashSet<int>();
+                                    specialDict[encounter.ID].Add(encounter.StructID.Segment);
+                                }
+                                else
+                                {
+                                    if (!floorDict.ContainsKey(encounter.ID))
+                                        floorDict[encounter.ID] = new Dictionary<int, HashSet<int>>();
+                                    if (!floorDict[encounter.ID].ContainsKey(encounter.StructID.Segment))
+                                        floorDict[encounter.ID][encounter.StructID.Segment] = new HashSet<int>();
+                                    floorDict[encounter.ID][encounter.StructID.Segment].Add(encounter.StructID.ID);
+                                }
+                            }
+
+                            List<string> encounterMsg = new List<string>();
+
+                            foreach (string tag in foundDict.Keys)
+                            {
+                                Dictionary<string, HashSet<int>> specialDict = foundDict[tag].specialDict;
+                                Dictionary<string, Dictionary<int, HashSet<int>>> floorDict = foundDict[tag].floorDict;
+
+                                foreach (string zz in DataManager.Instance.DataIndices[DataManager.DataType.Zone].GetOrderedKeys(true))
+                                {
+                                    ZoneData mainZone = DataManager.Instance.GetZone(zz);
+                                    for (int yy = 0; yy < mainZone.Segments.Count; yy++)
+                                    {
+                                        if (specialDict.ContainsKey(zz) && specialDict[zz].Contains(yy))
+                                        {
+                                            string locString = String.Format("{0} {1}S", mainZone.Name.ToLocal(), yy + 1);
+                                            string formattedZoneName = mainZone.Name.ToLocal();
+                                            foreach (var step in mainZone.Segments[yy].ZoneSteps)
+                                            {
+                                                var startStep = step as FloorNameIDZoneStep;
+                                                if (startStep != null)
+                                                {
+                                                    locString = LocalText.FormatLocalText(startStep.Name, "?").ToLocal().Replace('\n', ' ');
+                                                    break;
+                                                }
+                                            }
+                                            locString = locString.Replace(mainZone.Name.ToLocal(), formattedZoneName);
+                                            if (tag != "")
+                                                locString = String.Format("[{0}] [[{1}", tag, locString);
+                                            else
+                                                locString = "[[" + locString;
+                                            int place = locString.LastIndexOf(" ");
+                                            locString = locString.Remove(place, 1).Insert(place, "]] ");
+                                            encounterMsg.Add(locString);
+                                        }
+
+                                        if (floorDict.ContainsKey(zz) && floorDict[zz].ContainsKey(yy))
+                                        {
+                                            List<string> ranges = combineFloorRanges(floorDict[zz][yy]);
+                                            string rangeString = String.Join(",", ranges.ToArray());
+                                            string formattedZoneName = mainZone.Name.ToLocal();
+                                            string locString = String.Format("{0} {1}S {2}F", formattedZoneName, yy + 1, rangeString);
+                                            foreach (var step in mainZone.Segments[yy].ZoneSteps)
+                                            {
+                                                var startStep = step as FloorNameIDZoneStep;
+                                                if (startStep != null)
+                                                {
+                                                    locString = LocalText.FormatLocalText(startStep.Name, rangeString).ToLocal().Replace('\n', ' ');
+                                                    break;
+                                                }
+                                            }
+                                            locString = locString.Replace(mainZone.Name.ToLocal(), formattedZoneName);
+                                            if (tag != "")
+                                                locString = String.Format("[{0}] [[{1}", tag, locString);
+                                            else
+                                                locString = "[[" + locString;
+
+                                            int place = locString.LastIndexOf(" ");
+                                            locString = locString.Remove(place, 1).Insert(place, "]] ");
+
+                                            encounterMsg.Add(locString);
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (evolve && encounterMsg.Count == 0)
+                                encounterMsg.Add("Evolve");
+                            else if (starter && encounterMsg.Count == 0)
+                                encounterMsg.Add("Starter");
+
+                            if (encounterMsg.Count > 0)
+                                encounterStr = String.Join("\n", encounterMsg.ToArray());
+                        }
+                    }
+                    else
+                    {
+                        encounterStr = "NO DATA";
+                    }
+                    string monsterName = formData.FormName.ToLocal();
+                    if (encounterDict.ContainsKey(monsterName))
+                    {
+                        formIndexNumber = formIndexNumber + 1;
+                        monsterName = monsterName + "_" + formIndexNumber.ToString();
+                    }
+                    else
+                    {
+                        formIndexNumber = 0;
+                    }
+                    //Console.WriteLine(monsterName + "\n " + encounterStr + "\n\n");
+                    encounterDict.Add(monsterName, encounterStr);
+                }
+            }
+
+            return encounterDict;
         }
 
         public static List<MonsterFormData> EvaluateMonsterEvolution(MonsterData startingMonster, int baseForm, List<PromoteBranch> evolutionBranches)
@@ -561,8 +778,10 @@ namespace PMDC.Dev
 
                 // Get the base form
                 MonsterData startingMonster = firstFormMonsters[ii];
+
                 bool singleStageFamily = true;
                 int lastValidForm = 0;
+
                 for (int form = 0; form < startingMonster.Forms.Count; form++)
                 {
                     bool formIsCosmetic = false;
@@ -572,7 +791,9 @@ namespace PMDC.Dev
                     }
                     if (!formIsCosmetic)
                     {
+                        // Set this form as the one to compare stats to
                         lastValidForm = form;
+
                         List<MonsterFormData> currentEvolutionBranch = new List<MonsterFormData>();
                         currentEvolutionBranch.Add((MonsterFormData)startingMonster.Forms[form]);
 
@@ -598,6 +819,7 @@ namespace PMDC.Dev
 
                 // Keep track of names that have already been used in the data structure
                 List<String> namesAlreadyUsed = new List<string>();
+                List<String> redirectNames = new List<string>();
                 int currentFormNumber = 0;
 
                 // Print the Pokemon family page
@@ -629,6 +851,7 @@ namespace PMDC.Dev
                         fileContent += ("\r\n<tab name=\"" + formName + "\">{{:" + strippedName + "/Data|PokemonInfobox}}</tab>");
 
                         namesAlreadyUsed.Add(strippedName);
+                        redirectNames.Add(formName);
                     }
 
                     // End the tab
@@ -653,6 +876,22 @@ namespace PMDC.Dev
                 bool completed = WriteToWiki(firstFormStrippedName, fileContent);
                 if (!completed) // Check for duplicate form name and append form number as a fallback
                     completed = WriteToWiki(firstFormStrippedName + " (Pokemon)", fileContent);
+
+                // Create redirect pages
+                if (!singleStageFamily)
+                {
+                    for (int redirectNameIndex = 0; redirectNameIndex < namesAlreadyUsed.Count; redirectNameIndex++)
+                    {
+                        if (redirectNameIndex == 0)
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "]]");
+                        }
+                        else
+                        {
+                            WriteToWiki(namesAlreadyUsed[redirectNameIndex], "#REDIRECT [[" + firstFormStrippedName.Replace("_", " ") + "#" + redirectNames[redirectNameIndex] + "]]");
+                        }
+                    }
+                }
             }
         }
 
