@@ -1009,7 +1009,7 @@ namespace PMDC.Dev
                         "\r\n|range=" + range_string +
                         "\r\n|target=" + true_target_string +
                         "\r\n|terrain_effects=" + terrain_string +
-                        "\r\n|effects=" + "[TMP] " + localDesc +
+                        "\r\n|description=" + "[TMP] " + localDesc +
                         "\r\n}}";
 
                     bool completed = WriteToWiki(localName + "/Data", fileContent);
