@@ -1378,7 +1378,7 @@ namespace PMDC.Dev
                                                         for (int potentialSpawnIndex = 0; potentialSpawnIndex < potentialSpawnList.Count; potentialSpawnIndex++)
                                                         {
                                                             MobSpawn currentMob = potentialSpawnList.GetSpawn(potentialSpawnIndex);
-                                                            DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, floorGenIndex, floorGenIndex + 1, [String.Format("Spawns {0}-{1} times per floor with a {2}% chance", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate)], isBasementFloor);
+                                                            DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, floorGenIndex, floorGenIndex + 1, [String.Format("Spawns {0}-{1} times per floor with a {2}% chance<br>Doesn't respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate)], isBasementFloor);
                                                             specialSpawnList.Add(encounterData);
                                                         }
                                                     }
@@ -1511,31 +1511,34 @@ namespace PMDC.Dev
                     // Output the spawn list
                     if (segmentSpawnList.Count > 0)
                     {
-                        fileContent += "=== Regular spawns ===\r\n";
+                        fileContent += "=== Regular spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
                         foreach (DungeonSpawnData encounterData in segmentSpawnList)
                         {
                             fileContent += encounterData.ToString();
                         }
+                        fileContent += "|}\r\n";
                     }
 
                     // Output the special spawn list
                     if (specialSpawnList.Count > 0)
                     {
-                        fileContent += "\r\n=== Special spawns ===\r\n";
+                        fileContent += "\r\n=== Special spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
                         foreach (DungeonSpawnData encounterData in specialSpawnList)
                         {
                             fileContent += encounterData.ToString();
                         }
+                        fileContent += "|}\r\n";
                     }
 
                     // Output the vault spawn list
                     if (vaultSpawnList.Count > 0)
                     {
-                        fileContent += "\r\n=== Vault spawns ===\r\n";
+                        fileContent += "\r\n=== Vault spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
                         foreach (DungeonSpawnData encounterData in vaultSpawnList)
                         {
                             fileContent += encounterData.ToString();
                         }
+                        fileContent += "|}\r\n";
                     }
 
                     if (fileContent.Length > 0)
