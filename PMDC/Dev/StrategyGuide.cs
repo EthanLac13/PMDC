@@ -10,6 +10,7 @@ using RogueEssence.Data;
 using RogueEssence.Dungeon;
 using RogueEssence.LevelGen;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -1216,21 +1217,30 @@ namespace PMDC.Dev
         public static void PrintDungeonEncounterWiki()
         {
             List<string> dungeonList = new List<string>();
-            //dungeonList.Add("tropical_path");
-            //dungeonList.Add("faded_trail");
-            dungeonList.Add("wayward_wetlands");
-            //dungeonList = DataManager.Instance.DataIndices[DataManager.DataType.Zone].GetOrderedKeys(true);
+            dungeonList = DataManager.Instance.DataIndices[DataManager.DataType.Zone].GetOrderedKeys(true);
 
             for (int dungeonIndex = 0; dungeonIndex < dungeonList.Count; dungeonIndex++)
             {
+                // Create list of dungeon spawns
+                List<string[]> dungeonSpawnList = new List<string[]>();
+
                 // Get the dungeon's main zone
                 ZoneData mainZone = DataManager.Instance.GetZone(dungeonList[dungeonIndex]);
-                Console.WriteLine(mainZone.Name.ToLocal());
+                //Console.WriteLine(mainZone.Name.ToLocal());
 
                 List<ZoneSegmentBase> segmentList = mainZone.Segments;
                 for (int zoneIndex = 0; zoneIndex < segmentList.Count; zoneIndex++)
                 {
+                    // Create lists of Pokemon spawns
+                    List<DungeonSpawnData> segmentSpawnList = new List<DungeonSpawnData>();
+                    List<DungeonSpawnData> specialSpawnList = new List<DungeonSpawnData>();
+                    List<DungeonSpawnData> vaultSpawnList = new List<DungeonSpawnData>();
+
+                    // Get the current dungeon segment
                     ZoneSegmentBase currentSegment = segmentList[zoneIndex];
+
+                    // Variable to check basement floors
+                    bool isBasementFloor = false;
 
                     // Look through current segment's global steps to find Pokemon spawning step
                     List<ZoneStep> zoneStepList = currentSegment.ZoneSteps;
@@ -1243,6 +1253,11 @@ namespace PMDC.Dev
                             FloorNameDropZoneStep castZoneStep = (FloorNameDropZoneStep)step;
                             zoneName = castZoneStep.Name.ToLocal();
                             Console.WriteLine(zoneName);
+
+                            if (zoneName.Contains("B{0}"))
+                            {
+                                isBasementFloor = true;
+                            }
                         }
                         if (zoneStepType == "TeamSpawnZoneStep")
                         {
@@ -1258,8 +1273,8 @@ namespace PMDC.Dev
                                 MobSpawn currentMob = currentSpawn.Spawn;
 
                                 IntRange floorRange = spawnList.GetSpawnRange(spawnIndex);
-                                string encounterData = GetDungeonEncounterData(currentMob, currentSpawn, floorRange.Min, floorRange.Max);
-                                Console.WriteLine(encounterData);
+                                DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, currentSpawn, floorRange.Min, floorRange.Max, null, isBasementFloor);
+                                segmentSpawnList.Add(encounterData);
                             }
                         }
                         if (zoneStepType == "SpreadStepRangeZoneStep")
@@ -1268,28 +1283,45 @@ namespace PMDC.Dev
                             SpawnRangeList<IGenStep> spreadSteps = castZoneStep.Spawns;
                             for (int stepIndex = 0; stepIndex < spreadSteps.Count; stepIndex++)
                             {
-                                Console.WriteLine(spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName());
+                                //Console.WriteLine(spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName());
                                 // Check for placing random mobs
                                 if (spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName() == "PlaceRandomMobsStep")
                                 {
                                     PlaceRandomMobsStep<ListMapGenContext> mobSpawnStep = (PlaceRandomMobsStep<ListMapGenContext>)spreadSteps.GetSpawn(stepIndex);
-                                    LoopedTeamSpawner<ListMapGenContext> teamSpawner = (LoopedTeamSpawner<ListMapGenContext>)mobSpawnStep.Spawn;
-                                    SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)teamSpawner.Picker;
-                                    List<MobSpawn> specificSpawns = specificSpawner.Spawns;
+                                    if (mobSpawnStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                    { 
+                                        LoopedTeamSpawner<ListMapGenContext> teamSpawner = (LoopedTeamSpawner<ListMapGenContext>)mobSpawnStep.Spawn;
+                                        SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)teamSpawner.Picker;
+                                        List<MobSpawn> specificSpawns = specificSpawner.Spawns;
 
-                                    for(int specificSpawnIndex = 0; specificSpawnIndex < specificSpawns.Count; specificSpawnIndex++)
-                                    {
-                                        MobSpawn currentMob = specificSpawns[specificSpawnIndex];
-                                        string encounterData = GetDungeonEncounterData(currentMob, null, castZoneStep.SpreadPlan.FloorRange.Min, castZoneStep.SpreadPlan.FloorRange.Max + 1);
-                                        Console.WriteLine(encounterData);
+                                        for(int specificSpawnIndex = 0; specificSpawnIndex < specificSpawns.Count; specificSpawnIndex++)
+                                        {
+                                            MobSpawn currentMob = specificSpawns[specificSpawnIndex];
+                                            DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, castZoneStep.SpreadPlan.FloorRange.Min, castZoneStep.SpreadPlan.FloorRange.Max + 1, null, isBasementFloor);
+                                            specialSpawnList.Add(encounterData);
+                                        }
                                     }
                                 }
+                            }
+                        }
+                        if (zoneStepType == "SpreadVaultZoneStep")
+                        {
+                            SpreadVaultZoneStep castZoneStep = (SpreadVaultZoneStep)step;
+                            SpawnRangeList<MobSpawn> spawnList = castZoneStep.Mobs;
+                            // Make a data entry for each enemy
+                            for (int spawnIndex = 0; spawnIndex < spawnList.Count; spawnIndex++)
+                            {
+                                // Get current enemy data
+                                MobSpawn currentMob = spawnList.GetSpawn(spawnIndex);
+
+                                IntRange floorRange = spawnList.GetSpawnRange(spawnIndex);
+                                DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, floorRange.Min, floorRange.Max, null, isBasementFloor);
+                                vaultSpawnList.Add(encounterData);
                             }
                         }
                     }
 
                     // Look through floor gen steps
-                    Console.WriteLine("Special Spawns");
                     if (currentSegment is LayeredSegment)
                     {
                         LayeredSegment currentLayeredSegment = (LayeredSegment)currentSegment;
@@ -1312,7 +1344,7 @@ namespace PMDC.Dev
 
                                     foreach (GenStep<MapGenContext> currentGenStep in genStepsAtCurrentPriority)
                                     {
-                                        Console.WriteLine(currentGenStep.GetType().GetFormattedTypeName());
+                                        //Console.WriteLine(currentGenStep.GetType().GetFormattedTypeName());
 
                                         // Check for connected room with guard
                                         if (currentGenStep is GuardSealStep<MapGenContext>)
@@ -1324,10 +1356,36 @@ namespace PMDC.Dev
                                             for (int guardSpawnIndex = 0; guardSpawnIndex < guardSpawnList.Count; guardSpawnIndex++)
                                             {
                                                 MobSpawn currentMob = guardSpawnList.GetSpawn(guardSpawnIndex);
-                                                string encounterData = GetDungeonEncounterData(currentMob, null, floorGenIndex, floorGenIndex + 1, ["Spawns once, guarding secret stairs"]);
-                                                Console.WriteLine(encounterData);
+                                                DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, floorGenIndex, floorGenIndex + 1, ["Spawns once, guarding secret stairs"], isBasementFloor);
+                                                specialSpawnList.Add(encounterData);
                                             }
                                         }
+
+                                        // Check for random mobs being placed
+                                        if (currentGenStep is PlaceRandomMobsStep<MapGenContext>)
+                                        {
+                                            PlaceRandomMobsStep<MapGenContext> currentPlaceRandomMobsGenStep = (PlaceRandomMobsStep<MapGenContext>)currentGenStep;
+                                            if (currentPlaceRandomMobsGenStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                            {
+                                                LoopedTeamSpawner<MapGenContext> currentTeamSpawner = (LoopedTeamSpawner<MapGenContext>)currentPlaceRandomMobsGenStep.Spawn;
+                                                Console.WriteLine(currentTeamSpawner.Picker.GetType().GetFormattedTypeName());
+                                                if (currentTeamSpawner.Picker.GetType().GetFormattedTypeName() == "SpecificTeamSpawner")
+                                                {
+                                                    SpawnList<MobSpawn> potentialSpawnList = currentTeamSpawner.Picker.GetPossibleSpawns();
+                                                    if (currentTeamSpawner.AmountSpawner.GetType().GetFormattedTypeName() == "RandDecay")
+                                                    {
+                                                        RandDecay currentRandDecaySpawner = (RandDecay)currentTeamSpawner.AmountSpawner;
+                                                        for (int potentialSpawnIndex = 0; potentialSpawnIndex < potentialSpawnList.Count; potentialSpawnIndex++)
+                                                        {
+                                                            MobSpawn currentMob = potentialSpawnList.GetSpawn(potentialSpawnIndex);
+                                                            DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, floorGenIndex, floorGenIndex + 1, [String.Format("Spawns {0}-{1} times per floor with a {2}% chance", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate)], isBasementFloor);
+                                                            specialSpawnList.Add(encounterData);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
                                     }
                                 }
                             }
@@ -1347,7 +1405,7 @@ namespace PMDC.Dev
                                         // Check for terrain mobs
                                         if (currentGenStep is PlaceTerrainMobsStep<ListMapGenContext>)
                                         {
-                                            Console.WriteLine(currentGenStep.GetType().GetFormattedTypeName());
+                                            //Console.WriteLine(currentGenStep.GetType().GetFormattedTypeName());
 
                                             PlaceTerrainMobsStep<ListMapGenContext> currentPlaceTerrainMobsGenStep = (PlaceTerrainMobsStep<ListMapGenContext>)currentGenStep;
                                             LoopedTeamSpawner<ListMapGenContext> terrainMobsSpawner = (LoopedTeamSpawner<ListMapGenContext>)currentPlaceTerrainMobsGenStep.Spawn;
@@ -1360,8 +1418,8 @@ namespace PMDC.Dev
                                                     TeamMemberSpawn currentSpawn = terrainSpawns.GetSpawn(currentSpawnIndex);
                                                     MobSpawn currentMob = currentSpawn.Spawn;
 
-                                                    string encounterData = GetDungeonEncounterData(currentMob, currentSpawn, floorGenIndex, floorGenIndex + 1, ["Spawns in tall grass"]);
-                                                    Console.WriteLine(encounterData);
+                                                    DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, currentSpawn, floorGenIndex, floorGenIndex + 1, ["Spawns in tall grass"], isBasementFloor);
+                                                    specialSpawnList.Add(encounterData);
                                                 }
                                             }
 
@@ -1372,66 +1430,300 @@ namespace PMDC.Dev
                             }
                         }
                     }
+
+                    // Remove duplicate entries in special spawn list
+                    for(int i = 0; i < specialSpawnList.Count; i++)
+                    {
+                        DungeonSpawnData currentEntry = specialSpawnList[i];
+                        if (!currentEntry.isDuplicate)
+                        {
+                            // Check through the list to find duplicates
+                            for (int j = i + 1; j < specialSpawnList.Count; j++)
+                            {
+                                DungeonSpawnData evaluatedEntry = specialSpawnList[j];
+
+                                if (currentEntry.Equals(evaluatedEntry))
+                                {
+                                    currentEntry.endFloor = evaluatedEntry.endFloor;
+                                    evaluatedEntry.isDuplicate = true;
+
+                                    specialSpawnList.RemoveAt(i);
+                                    specialSpawnList.Insert(i, currentEntry);
+
+                                    specialSpawnList.RemoveAt(j);
+                                    specialSpawnList.Insert(j, evaluatedEntry);
+                                }
+                            }
+                        }
+                    }
+                    for(int i = specialSpawnList.Count - 1; i >= 0; i--)
+                    {
+                        if (specialSpawnList[i].isDuplicate)
+                        {
+                            specialSpawnList.RemoveAt(i);
+                        }
+                    }
+
+                    // Sort spawn lists by start and end floor, then min and max level
+                    segmentSpawnList.Sort(delegate (DungeonSpawnData x, DungeonSpawnData y)
+                    {
+                        if (x.startFloor != y.startFloor)
+                        {
+                            return x.startFloor.CompareTo(y.startFloor);
+                        }
+                        else if (x.endFloor != y.endFloor)
+                        {
+                            return x.endFloor.CompareTo(y.endFloor);
+                        }
+                        else if (x.minLevel != y.minLevel)
+                        {
+                            return x.minLevel.CompareTo(y.minLevel);
+                        }
+                        else
+                        {
+                            return x.maxLevel.CompareTo(y.maxLevel);
+                        }
+                    }
+                    );
+                    specialSpawnList.Sort(delegate (DungeonSpawnData x, DungeonSpawnData y)
+                    {
+                        if (x.startFloor != y.startFloor)
+                        {
+                            return x.startFloor.CompareTo(y.startFloor);
+                        }
+                        else if (x.endFloor != y.endFloor)
+                        {
+                            return x.endFloor.CompareTo(y.endFloor);
+                        }
+                        else if (x.minLevel != y.minLevel)
+                        {
+                            return x.minLevel.CompareTo(y.minLevel);
+                        }
+                        else
+                        {
+                            return x.maxLevel.CompareTo(y.maxLevel);
+                        }
+                    }
+                    );
+
+                    string fileContent = "";
+
+                    // Output the spawn list
+                    if (segmentSpawnList.Count > 0)
+                    {
+                        fileContent += "=== Regular spawns ===\r\n";
+                        foreach (DungeonSpawnData encounterData in segmentSpawnList)
+                        {
+                            fileContent += encounterData.ToString();
+                        }
+                    }
+
+                    // Output the special spawn list
+                    if (specialSpawnList.Count > 0)
+                    {
+                        fileContent += "\r\n=== Special spawns ===\r\n";
+                        foreach (DungeonSpawnData encounterData in specialSpawnList)
+                        {
+                            fileContent += encounterData.ToString();
+                        }
+                    }
+
+                    // Output the vault spawn list
+                    if (vaultSpawnList.Count > 0)
+                    {
+                        fileContent += "\r\n=== Vault spawns ===\r\n";
+                        foreach (DungeonSpawnData encounterData in vaultSpawnList)
+                        {
+                            fileContent += encounterData.ToString();
+                        }
+                    }
+
+                    if (fileContent.Length > 0)
+                    { 
+                        string fileName = zoneName.Replace("\r\n", "").Replace("\r", "").Replace("\n", "").Replace("B{0}F", "").Replace("{0}F", "");
+                        WriteToWiki(fileName + "/Encounters", fileContent);
+                    }
                 }
             }
         }
 
-        public static string GetDungeonEncounterData(MobSpawn currentMob, TeamMemberSpawn currentSpawn = null, int minFloor = 0, int maxFloor = 0, string[] extraFeatures = null)
+        public struct DungeonSpawnData()
         {
-            // Initialize entry string
-            string encounterRow = "{{EncounterRow";
+            public string spawnName;
+
+            public int minLevel;
+            public int maxLevel;
+            public bool levelCanBeIncreased;
+
+            public int startFloor;
+            public int endFloor;
+            public bool isBasement;
+
+            public string spawnIntrinsic;
+
+            public List<string> specifiedSkillsList = new List<string>();
+
+            public List<string> extraFeatures = new List<string>();
+
+            public bool isDuplicate = false;
+
+            public void setDuplicate(bool isDupe)
+            {
+                isDuplicate = isDupe;
+            }
+
+            public bool Equals(DungeonSpawnData otherEntry)
+            {
+                bool answer = false;
+
+                if (spawnName.Equals(otherEntry.spawnName))
+                {
+                    if (minLevel == otherEntry.minLevel && maxLevel == otherEntry.maxLevel)
+                    {
+                        if (spawnIntrinsic.Equals(otherEntry.spawnIntrinsic))
+                        {
+                            if (specifiedSkillsList.Except(otherEntry.specifiedSkillsList).Count() == 0)
+                            {
+                                if (extraFeatures.Except(otherEntry.extraFeatures).Count() == 0)
+                                {
+                                    answer = true;
+                                }
+                                answer = true;
+                            }
+                        }
+                    }
+                }
+
+                return answer;
+            }
+
+            public override string ToString()
+            {
+                string encounterRow = "{{EncounterRow";
+
+                // Spawn name step
+                encounterRow += "\r\n|pokemon=" + spawnName;
+
+                // Level range step
+                string levelRangeString;
+                if (minLevel == maxLevel)
+                {
+                    levelRangeString = minLevel.ToString();
+                }
+                else
+                {
+                    levelRangeString = minLevel.ToString() + "-" + maxLevel.ToString();
+                }
+                encounterRow += "\r\n|level=" + levelRangeString;
+                if (levelCanBeIncreased)
+                {
+                    encounterRow += "+";
+                }
+
+                // Floor range step
+                encounterRow += "\r\n|start_floor=" + startFloor;
+                encounterRow += "\r\n|end_floor=" + endFloor;
+                if (isBasement)
+                {
+                    encounterRow += "\r\n|is_basement=true";
+                }
+
+                // Ability step
+                if (spawnIntrinsic != "")
+                {
+                    encounterRow += "\r\n|ability=" + spawnIntrinsic;
+                }
+
+                // Moves step
+                if (specifiedSkillsList.Count > 0)
+                {
+                    string specifiedSkillsString = "";
+                    for(int i = 0; i < specifiedSkillsList.Count; i++)
+                    {
+                        specifiedSkillsString += specifiedSkillsList[i];
+                        if (i <  specifiedSkillsList.Count - 1)
+                        {
+                            specifiedSkillsString += "<br>";
+                        }
+                    }
+                    encounterRow += "\r\n|moves=" + specifiedSkillsString;
+                }
+
+                // Notes step
+                if (extraFeatures.Count > 0)
+                {
+                    string notes = "\r\n|notes=";
+
+                    for (int i = 0; i < extraFeatures.Count; i++)
+                    {
+                        notes += extraFeatures[i];
+                        if (i < extraFeatures.Count - 1)
+                        {
+                            notes += "<br>";
+                        }
+                    }
+
+                    encounterRow += notes;
+                }
+
+                // Footer step
+                encounterRow += "\r\n}}\r\n";
+
+                return encounterRow;
+            }
+        }
+
+        public static DungeonSpawnData GetDungeonEncounterData(MobSpawn currentMob, TeamMemberSpawn currentSpawn = null, int minFloor = 0, int maxFloor = 0, string[] addedFeatures = null, bool isBasementFloor = false)
+        {
+            DungeonSpawnData currentSpawnData = new DungeonSpawnData();
 
             // Form name step
             MonsterData currentEnemyData = DataManager.Instance.GetMonster(currentMob.BaseForm.Species);
-            encounterRow += "\r\n|pokemon=" + currentEnemyData.Forms[currentMob.BaseForm.Form].FormName.ToLocal();
+            currentSpawnData.spawnName = currentEnemyData.Forms[currentMob.BaseForm.Form].FormName.ToLocal();
 
             // Level range step
             RandRange levelRange = currentMob.Level;
-            string levelRangeString;
-            if (levelRange.Min == levelRange.Max)
-            {
-                levelRangeString = levelRange.Min.ToString();
-            }
-            else
-            {
-                levelRangeString = levelRange.Min.ToString() + "-" + levelRange.Max.ToString();
-            }
-            encounterRow += "\r\n|level=" + levelRangeString;
+            currentSpawnData.minLevel = levelRange.Min;
+            currentSpawnData.maxLevel = levelRange.Max;
 
             // Floor range step
             IntRange floorRange = new IntRange(minFloor, maxFloor);
-            encounterRow += "\r\n|start_floor=" + (floorRange.Min + 1).ToString();
-            encounterRow += "\r\n|end_floor=" + (floorRange.Max).ToString();
+            currentSpawnData.startFloor = floorRange.Min + 1;
+            currentSpawnData.endFloor = floorRange.Max;
+            currentSpawnData.isBasement = isBasementFloor;
 
             // Intrinsic step
             if (currentMob.Intrinsic != "")
             {
                 IntrinsicData currentIntrinsicData = DataManager.Instance.GetIntrinsic(currentMob.Intrinsic);
-                encounterRow += "\r\n|ability=" + currentIntrinsicData.Name.ToLocal();
+                currentSpawnData.spawnIntrinsic = currentIntrinsicData.Name.ToLocal();
+            }
+            else
+            {
+                currentSpawnData.spawnIntrinsic = "";
             }
 
             // Specified skills list
             List<string> specifiedSkillsList = currentMob.SpecifiedSkills;
-            string listOfSkills = "\r\n|moves=";
             for (int specifiedSkillIndex = 0; specifiedSkillIndex < specifiedSkillsList.Count; specifiedSkillIndex++)
             {
                 string skill = specifiedSkillsList[specifiedSkillIndex];
                 SkillData currentSkillData = DataManager.Instance.GetSkill(skill);
-                listOfSkills += "[[" + currentSkillData.Name.ToLocal() + "]]";
-                if (specifiedSkillIndex < (specifiedSkillsList.Count - 1))
-                {
-                    listOfSkills += ", ";
-                }
+                currentSpawnData.specifiedSkillsList.Add("[[" + currentSkillData.Name.ToLocal() + "]]");
             }
-            encounterRow += listOfSkills;
 
             // Other qualities list
-            string notes = "\r\n|notes=";
-            int noteCount = 0;
+            if (addedFeatures != null)
+            {
+                for (int i = 0; i < addedFeatures.Length; i++)
+                {
+                    currentSpawnData.extraFeatures.Add(addedFeatures[i]);
+                }
+            }
+
             if (currentMob.Tactic == "wait_attack" || currentMob.Tactic == "turret")
             {
-                notes += "Doesn't move<br>";
-                noteCount++;
+                currentSpawnData.extraFeatures.Add("Doesn't move");
             }
             for (int spawnFeatureIndex = 0; spawnFeatureIndex < currentMob.SpawnFeatures.Count; spawnFeatureIndex++)
             {
@@ -1440,8 +1732,7 @@ namespace PMDC.Dev
                 {
                     MobSpawnItem castFeature = (MobSpawnItem)spawnFeature;
                     ItemData heldItem = DataManager.Instance.GetItem(castFeature.Items.GetSpawn(0).ID);
-                    notes += "Held: [[" + heldItem.Name.ToLocal() + "]]<br>";
-                    noteCount++;
+                    currentSpawnData.extraFeatures.Add("Held: [[" + heldItem.Name.ToLocal() + "]]");
                 }
                 if (spawnFeature is MobSpawnStatus)
                 {
@@ -1452,10 +1743,26 @@ namespace PMDC.Dev
                         StatusEffect currentStatus = statusList.GetSpawn(statusIndex);
                         if (currentStatus.ID == "sleep")
                         {
-                            notes += "Spawns asleep<br>";
-                            noteCount++;
+                            currentSpawnData.extraFeatures.Add("Spawns asleep");
                         }
                     }
+                }
+                if (spawnFeature is MobSpawnLevelScale)
+                {
+                    MobSpawnLevelScale castFeature = (MobSpawnLevelScale)spawnFeature;
+                    string levelScaleString = "";
+                    if (castFeature.StartFromID == 0)
+                    {
+                        levelScaleString = String.Format("Gains {0}/{1} levels every floor", castFeature.AddNumerator, castFeature.AddDenominator);
+                    }
+                    else
+                    {
+                        levelScaleString = String.Format("Starting at floor {0}, gains {1}/{2} levels every floor", castFeature.StartFromID + 1, castFeature.AddNumerator, castFeature.AddDenominator);
+                    }
+                    currentSpawnData.extraFeatures.Add(levelScaleString);
+                    currentSpawnData.minLevel = castFeature.MinLevel;
+                    currentSpawnData.maxLevel = castFeature.MinLevel;
+                    currentSpawnData.levelCanBeIncreased = true;
                 }
                 /*
                 if (spawnFeature is MobSpawnWeak)
@@ -1470,39 +1777,19 @@ namespace PMDC.Dev
                 TeamMemberSpawn.MemberRole memberRole = currentSpawn.Role;
                 if (memberRole == TeamMemberSpawn.MemberRole.Support)
                 {
-                    notes += "Spawns as team support<br>";
-                    noteCount++;
+                    currentSpawnData.extraFeatures.Add("Spawns as team support");
                 }
                 if (memberRole == TeamMemberSpawn.MemberRole.Leader)
                 {
-                    notes += "Spawns as team leader<br>";
-                    noteCount++;
+                    currentSpawnData.extraFeatures.Add("Spawns as team leader");
                 }
                 if (memberRole == TeamMemberSpawn.MemberRole.Loner)
                 {
-                    notes += "Spawns alone<br>";
-                    noteCount++;
+                    currentSpawnData.extraFeatures.Add("Spawns alone");
                 }
             }
-            if (extraFeatures != null)
-            {
-                foreach (string extraFeature in extraFeatures)
-                {
-                    notes += extraFeature;
-                    notes += "<br>";
-                    noteCount++;
-                }
-            }
-            if (noteCount > 0)
-            {
-                notes = notes.Remove(notes.LastIndexOf("<br>"), 4);
-                encounterRow += notes;
-            }
 
-            // Footer step
-            encounterRow += "\r\n}}\r\n";
-
-            return encounterRow;
+            return currentSpawnData;
         }
 
         public static void ProgressBar(string message, string ending, int totalChunks, int progress, int total)
