@@ -1540,7 +1540,7 @@ namespace PMDC.Dev
 
                     if (fileContent.Length > 0)
                     { 
-                        string fileName = zoneName.Replace("\r\n", "").Replace("\r", "").Replace("\n", "").Replace("B{0}F", "").Replace("{0}F", "");
+                        string fileName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd();
                         WriteToWiki(fileName + "/Encounters", fileContent);
                     }
                 }
