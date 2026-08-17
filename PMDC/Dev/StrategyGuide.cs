@@ -14,6 +14,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 
 namespace PMDC.Dev
 {
@@ -1223,9 +1224,11 @@ namespace PMDC.Dev
             {
                 // Create list of dungeon spawns
                 List<string[]> dungeonSpawnList = new List<string[]>();
+                int conflictSegment = 0;
 
                 // Get the dungeon's main zone
                 ZoneData mainZone = DataManager.Instance.GetZone(dungeonList[dungeonIndex]);
+                string mainZoneName = mainZone.Name.DefaultText;
                 //Console.WriteLine(mainZone.Name.ToLocal());
 
                 List<ZoneSegmentBase> segmentList = mainZone.Segments;
@@ -1235,6 +1238,7 @@ namespace PMDC.Dev
                     List<DungeonSpawnData> segmentSpawnList = new List<DungeonSpawnData>();
                     List<DungeonSpawnData> specialSpawnList = new List<DungeonSpawnData>();
                     List<DungeonSpawnData> vaultSpawnList = new List<DungeonSpawnData>();
+                    List<StaticSpawnData> staticSpawnList = new List<StaticSpawnData>();
 
                     // Get the current dungeon segment
                     ZoneSegmentBase currentSegment = segmentList[zoneIndex];
@@ -1245,6 +1249,7 @@ namespace PMDC.Dev
                     // Look through current segment's global steps to find Pokemon spawning step
                     List<ZoneStep> zoneStepList = currentSegment.ZoneSteps;
                     string zoneName = "";
+                    string trimmedZoneName = "";
                     foreach (ZoneStep step in zoneStepList)
                     {
                         string zoneStepType = step.GetType().GetFormattedTypeName();
@@ -1252,7 +1257,8 @@ namespace PMDC.Dev
                         {
                             FloorNameDropZoneStep castZoneStep = (FloorNameDropZoneStep)step;
                             zoneName = castZoneStep.Name.ToLocal();
-                            Console.WriteLine(zoneName);
+                            trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
+                            Console.WriteLine(trimmedZoneName);
 
                             if (zoneName.Contains("B{0}"))
                             {
@@ -1414,7 +1420,8 @@ namespace PMDC.Dev
                                             {
                                                 PoolTeamSpawner specificPoolSpawner = (PoolTeamSpawner)specificSpawner;
                                                 SpawnList<TeamMemberSpawn> terrainSpawns = specificPoolSpawner.Spawns;
-                                                for (int currentSpawnIndex = 0; currentSpawnIndex < terrainSpawns.Count; currentSpawnIndex++) {
+                                                for (int currentSpawnIndex = 0; currentSpawnIndex < terrainSpawns.Count; currentSpawnIndex++)
+                                                {
                                                     TeamMemberSpawn currentSpawn = terrainSpawns.GetSpawn(currentSpawnIndex);
                                                     MobSpawn currentMob = currentSpawn.Spawn;
 
@@ -1428,11 +1435,110 @@ namespace PMDC.Dev
                                     }
                                 }
                             }
+
+                            if (floorGenList[floorGenIndex] is LoadGen)
+                            {
+                                PriorityList<GenStep<MapLoadContext>> genStepList = new PriorityList<GenStep<MapLoadContext>>();
+                                LoadGen currentFloorGen = (LoadGen)floorGenList[floorGenIndex];
+                                genStepList = currentFloorGen.GenSteps;
+
+                                IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
+
+                                foreach (Priority currentPriority in genStepListOfPriorities)
+                                {
+                                    IEnumerable<GenStep<MapLoadContext>> genStepsAtCurrentPriority = genStepList.GetItems(currentPriority);
+
+                                    foreach (GenStep<MapLoadContext> currentGenStep in genStepsAtCurrentPriority)
+                                    {
+                                        if (currentGenStep is MappedRoomStep<MapLoadContext>)
+                                        {
+                                            // Get the ground map loaded by this load gen
+                                            MappedRoomStep<MapLoadContext> currentMappedRoomGenStep = (MappedRoomStep<MapLoadContext>)currentGenStep;
+                                            string mapID = currentMappedRoomGenStep.MapID;
+                                            Map currentMap = DataManager.Instance.GetMap(mapID);
+
+                                            if (zoneName == "")
+                                            {
+                                                zoneName = currentMap.Name.ToLocal();
+                                                trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
+                                                Console.WriteLine(trimmedZoneName);
+                                            }
+
+                                            if (currentMap.MapTeams.Count > 0)
+                                            {
+                                                Team mapMobs = currentMap.MapTeams[0];
+                                                foreach (Character currentMob in mapMobs.Players)
+                                                {
+                                                    Console.WriteLine(currentMob.Name);
+
+                                                    StaticSpawnData currentStaticSpawn = new StaticSpawnData();
+                                                    currentStaticSpawn.spawnName = currentMob.Name;
+                                                    currentStaticSpawn.level = currentMob.Level;
+                                                    currentStaticSpawn.gender = (int)currentMob.CurrentForm.Gender;
+
+                                                    foreach (SlotSkill currentSkill in currentMob.BaseSkills)
+                                                    {
+                                                        SkillData learnedSkill = DataManager.Instance.GetSkill(currentSkill.SkillNum);
+                                                        currentStaticSpawn.specifiedSkillsList.Add("[[" + learnedSkill.Name.ToLocal() + "]]");
+                                                    }
+                                                    
+                                                    currentStaticSpawn.spawnIntrinsic = DataManager.Instance.GetIntrinsic(currentMob.BaseIntrinsics[0]).Name.ToLocal();
+
+                                                    currentStaticSpawn.extraFeatures.Add("Max HP: " + currentMob.MaxHP.ToString());
+                                                    currentStaticSpawn.extraFeatures.Add("Attack: " + currentMob.Atk.ToString());
+                                                    currentStaticSpawn.extraFeatures.Add("Defense: " + currentMob.Def.ToString());
+                                                    currentStaticSpawn.extraFeatures.Add("Sp. Atk: " + currentMob.MAtk.ToString());
+                                                    currentStaticSpawn.extraFeatures.Add("Sp. Def: " + currentMob.MDef.ToString());
+                                                    currentStaticSpawn.extraFeatures.Add("Speed: " + currentMob.Speed.ToString());
+
+                                                    if (currentMob.EquippedItem.ID != "")
+                                                    {
+                                                        ItemData mobHeldItem = DataManager.Instance.GetItem(currentMob.EquippedItem.ID);
+                                                        currentStaticSpawn.extraFeatures.Add("Held: [[" + mobHeldItem.Name.ToLocal() + "]]");
+                                                    }
+
+
+                                                    staticSpawnList.Add(currentStaticSpawn);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (currentSegment is SingularSegment)
+                    {
+                        SingularSegment currentSingularSegment = (SingularSegment)currentSegment;
+                        if (currentSingularSegment.BaseFloor.GetType().GetFormattedTypeName() == "LoadGen")
+                        {
+                            PriorityList<GenStep<MapLoadContext>> genStepList = new PriorityList<GenStep<MapLoadContext>>();
+                            LoadGen currentFloorGen = (LoadGen)currentSingularSegment.BaseFloor;
+                            genStepList = currentFloorGen.GenSteps;
+
+                            IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
+
+                            foreach (Priority currentPriority in genStepListOfPriorities)
+                            {
+                                IEnumerable<GenStep<MapLoadContext>> genStepsAtCurrentPriority = genStepList.GetItems(currentPriority);
+
+                                foreach (GenStep<MapLoadContext> currentGenStep in genStepsAtCurrentPriority)
+                                {
+                                    // Get name of segment
+                                    if (currentGenStep is MapNameIDStep<MapLoadContext>)
+                                    {
+                                        MapNameIDStep<MapLoadContext> currentMapNameIDGenStep = (MapNameIDStep<MapLoadContext>)currentGenStep;
+                                        zoneName = mainZoneName + " " + currentMapNameIDGenStep.Name.DefaultText;
+                                        trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
+                                        Console.WriteLine(trimmedZoneName);
+                                    }
+                                }
+                            }
                         }
                     }
 
                     // Remove duplicate entries in special spawn list
-                    for(int i = 0; i < specialSpawnList.Count; i++)
+                    for (int i = 0; i < specialSpawnList.Count; i++)
                     {
                         DungeonSpawnData currentEntry = specialSpawnList[i];
                         if (!currentEntry.isDuplicate)
@@ -1511,7 +1617,14 @@ namespace PMDC.Dev
                     // Output the spawn list
                     if (segmentSpawnList.Count > 0)
                     {
-                        fileContent += "=== Regular spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
+                        if (specialSpawnList.Count > 0 || vaultSpawnList.Count > 0)
+                        {
+                            fileContent += "=== Regular spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
+                        }
+                        else
+                        {
+                            fileContent += "{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
+                        }
                         foreach (DungeonSpawnData encounterData in segmentSpawnList)
                         {
                             fileContent += encounterData.ToString();
@@ -1541,10 +1654,26 @@ namespace PMDC.Dev
                         fileContent += "|}\r\n";
                     }
 
+                    // Output the static spawn list
+                    if (staticSpawnList.Count > 0)
+                    {
+                        fileContent += "\r\n=== Static spawns ===\r\n\r\n{| class=\"wikitable\"\r\n{{EncounterHeader}}\r\n";
+                        foreach (StaticSpawnData encounterData in staticSpawnList)
+                        {
+                            fileContent += encounterData.ToString();
+                        }
+                        fileContent += "|}\r\n";
+                    }
+
                     if (fileContent.Length > 0)
                     { 
                         string fileName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
-                        WriteToWiki(fileName + "/Encounters", fileContent);
+                        bool completed = WriteToWiki(fileName + "/Encounters", fileContent);
+                        if (!completed)
+                        {
+                            conflictSegment++;
+                            completed = WriteToWiki(fileName + "_" + conflictSegment.ToString() + "/Encounters", fileContent);
+                        }
                     }
                 }
             }
@@ -1675,6 +1804,118 @@ namespace PMDC.Dev
                 return encounterRow;
             }
         }
+
+        public struct StaticSpawnData()
+        {
+            public string spawnName;
+
+            public int level;
+
+            public int gender = -1;
+            private static string[] genderStrings = ["Genderless", "Male", "Female"];
+
+            public string spawnIntrinsic;
+
+            public List<string> specifiedSkillsList = new List<string>();
+
+            public List<string> extraFeatures = new List<string>();
+
+            public bool isDuplicate = false;
+
+            public void setDuplicate(bool isDupe)
+            {
+                isDuplicate = isDupe;
+            }
+
+            public bool Equals(StaticSpawnData otherEntry)
+            {
+                bool answer = false;
+
+                if (spawnName.Equals(otherEntry.spawnName))
+                {
+                    if (level == otherEntry.level)
+                    {
+                        if (gender == otherEntry.gender)
+                        {
+                            if (spawnIntrinsic.Equals(otherEntry.spawnIntrinsic))
+                            {
+                                if (specifiedSkillsList.Except(otherEntry.specifiedSkillsList).Count() == 0)
+                                {
+                                    if (extraFeatures.Except(otherEntry.extraFeatures).Count() == 0)
+                                    {
+                                        answer = true;
+                                    }
+                                    answer = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return answer;
+            }
+
+            public override string ToString()
+            {
+                string encounterRow = "{{EncounterRow";
+
+                // Spawn name step
+                encounterRow += "\r\n|pokemon=" + spawnName;
+
+                // Level range step
+                encounterRow += "\r\n|level=" + level.ToString();
+
+                // Gender step
+                if (gender != -1)
+                {
+                    encounterRow += "\r\n|gender=" + genderStrings[gender];
+                }
+
+                // Ability step
+                if (spawnIntrinsic != "")
+                {
+                    encounterRow += "\r\n|ability=" + spawnIntrinsic;
+                }
+
+                // Moves step
+                if (specifiedSkillsList.Count > 0)
+                {
+                    string specifiedSkillsString = "";
+                    for (int i = 0; i < specifiedSkillsList.Count; i++)
+                    {
+                        specifiedSkillsString += specifiedSkillsList[i];
+                        if (i < specifiedSkillsList.Count - 1)
+                        {
+                            specifiedSkillsString += "<br>";
+                        }
+                    }
+                    encounterRow += "\r\n|moves=" + specifiedSkillsString;
+                }
+
+                // Notes step
+                if (extraFeatures.Count > 0)
+                {
+                    string notes = "\r\n|notes=";
+
+                    for (int i = 0; i < extraFeatures.Count; i++)
+                    {
+                        notes += extraFeatures[i];
+                        if (i < extraFeatures.Count - 1)
+                        {
+                            notes += "<br>";
+                        }
+                    }
+
+                    encounterRow += notes;
+                }
+
+                // Footer step
+                encounterRow += "\r\n}}\r\n";
+
+                return encounterRow;
+            }
+        }
+
 
         public static DungeonSpawnData GetDungeonEncounterData(MobSpawn currentMob, TeamMemberSpawn currentSpawn = null, int minFloor = 0, int maxFloor = 0, string[] addedFeatures = null, bool isBasementFloor = false)
         {
