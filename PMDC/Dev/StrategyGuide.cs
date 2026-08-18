@@ -1537,6 +1537,23 @@ namespace PMDC.Dev
                                     if (currentGenStep is PlaceTerrainMobsStep<MapLoadContext>)
                                     {
                                         PlaceTerrainMobsStep<MapLoadContext> currentPlaceTerrainMobsGenStep = (PlaceTerrainMobsStep<MapLoadContext>)currentGenStep;
+                                        if (currentPlaceTerrainMobsGenStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                        {
+                                            LoopedTeamSpawner<MapLoadContext> currentTeamSpawner = (LoopedTeamSpawner<MapLoadContext>)currentPlaceTerrainMobsGenStep.Spawn;
+                                            if (currentTeamSpawner.Picker.GetType().GetFormattedTypeName() == "PoolTeamSpawner")
+                                            {
+                                                PoolTeamSpawner specificPoolSpawner = (PoolTeamSpawner)currentTeamSpawner.Picker;
+                                                SpawnList<TeamMemberSpawn> terrainSpawns = specificPoolSpawner.Spawns;
+                                                for (int currentSpawnIndex = 0; currentSpawnIndex < terrainSpawns.Count; currentSpawnIndex++)
+                                                {
+                                                    TeamMemberSpawn currentSpawn = terrainSpawns.GetSpawn(currentSpawnIndex);
+                                                    MobSpawn currentMob = currentSpawn.Spawn;
+
+                                                    DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, currentSpawn, 0, 1, ["Does not respawn"], isBasementFloor);
+                                                    specialSpawnList.Add(encounterData);
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
