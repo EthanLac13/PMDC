@@ -1532,6 +1532,12 @@ namespace PMDC.Dev
                                         trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
                                         Console.WriteLine(trimmedZoneName);
                                     }
+
+                                    // Check for mob spawns
+                                    if (currentGenStep is PlaceTerrainMobsStep<MapLoadContext>)
+                                    {
+                                        PlaceTerrainMobsStep<MapLoadContext> currentPlaceTerrainMobsGenStep = (PlaceTerrainMobsStep<MapLoadContext>)currentGenStep;
+                                    }
                                 }
                             }
                         }

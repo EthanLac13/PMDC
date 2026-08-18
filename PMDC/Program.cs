@@ -585,13 +585,11 @@ namespace PMDC
                     LuaEngine.Instance.LoadScripts();
                     StrategyGuide.DeleteWiki();
                     //just print a guidebook and exit
-                    /*
                     StrategyGuide.PrintMoveWiki();
                     StrategyGuide.PrintItemWiki();
                     StrategyGuide.PrintAbilityWiki();
                     StrategyGuide.PrintMonsterWiki();
                     StrategyGuide.PrintMonsterFamilyWiki();
-                    */
                     StrategyGuide.PrintDungeonEncounterWiki();
                     //StrategyGuide.PrintDungeonWiki();
                     return;
