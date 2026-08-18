@@ -1258,7 +1258,7 @@ namespace PMDC.Dev
                             FloorNameDropZoneStep castZoneStep = (FloorNameDropZoneStep)step;
                             zoneName = castZoneStep.Name.ToLocal();
                             trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
-                            Console.WriteLine(trimmedZoneName);
+                            //Console.WriteLine(trimmedZoneName);
 
                             if (zoneName.Contains("B{0}"))
                             {
@@ -1374,7 +1374,7 @@ namespace PMDC.Dev
                                             if (currentPlaceRandomMobsGenStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
                                             {
                                                 LoopedTeamSpawner<MapGenContext> currentTeamSpawner = (LoopedTeamSpawner<MapGenContext>)currentPlaceRandomMobsGenStep.Spawn;
-                                                Console.WriteLine(currentTeamSpawner.Picker.GetType().GetFormattedTypeName());
+                                                //Console.WriteLine(currentTeamSpawner.Picker.GetType().GetFormattedTypeName());
                                                 if (currentTeamSpawner.Picker.GetType().GetFormattedTypeName() == "SpecificTeamSpawner")
                                                 {
                                                     SpawnList<MobSpawn> potentialSpawnList = currentTeamSpawner.Picker.GetPossibleSpawns();
@@ -1461,7 +1461,7 @@ namespace PMDC.Dev
                                             {
                                                 zoneName = currentMap.Name.ToLocal();
                                                 trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
-                                                Console.WriteLine(trimmedZoneName);
+                                                //Console.WriteLine(trimmedZoneName);
                                             }
 
                                             if (currentMap.MapTeams.Count > 0)
@@ -1469,7 +1469,7 @@ namespace PMDC.Dev
                                                 Team mapMobs = currentMap.MapTeams[0];
                                                 foreach (Character currentMob in mapMobs.Players)
                                                 {
-                                                    Console.WriteLine(currentMob.Name);
+                                                    //Console.WriteLine(currentMob.Name);
 
                                                     StaticSpawnData currentStaticSpawn = new StaticSpawnData();
                                                     currentStaticSpawn.spawnName = currentMob.Name;
@@ -1530,7 +1530,7 @@ namespace PMDC.Dev
                                         MapNameIDStep<MapLoadContext> currentMapNameIDGenStep = (MapNameIDStep<MapLoadContext>)currentGenStep;
                                         zoneName = mainZoneName + " " + currentMapNameIDGenStep.Name.DefaultText;
                                         trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
-                                        Console.WriteLine(trimmedZoneName);
+                                        //Console.WriteLine(trimmedZoneName);
                                     }
 
                                     // Check for mob spawns
