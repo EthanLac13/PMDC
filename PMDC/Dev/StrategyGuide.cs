@@ -1252,8 +1252,8 @@ namespace PMDC.Dev
                     string trimmedZoneName = "";
                     foreach (ZoneStep step in zoneStepList)
                     {
-                        string zoneStepType = step.GetType().GetFormattedTypeName();
-                        if (zoneStepType == "FloorNameDropZoneStep")
+                        Type zoneStepType = step.GetType();
+                        if (zoneStepType == typeof(FloorNameDropZoneStep))
                         {
                             FloorNameDropZoneStep castZoneStep = (FloorNameDropZoneStep)step;
                             zoneName = castZoneStep.Name.ToLocal();
@@ -1265,7 +1265,7 @@ namespace PMDC.Dev
                                 isBasementFloor = true;
                             }
                         }
-                        if (zoneStepType == "TeamSpawnZoneStep")
+                        if (zoneStepType == typeof(TeamSpawnZoneStep))
                         {
                             TeamSpawnZoneStep castZoneStep = (TeamSpawnZoneStep)step;
 
@@ -1283,7 +1283,7 @@ namespace PMDC.Dev
                                 segmentSpawnList.Add(encounterData);
                             }
                         }
-                        if (zoneStepType == "SpreadStepRangeZoneStep")
+                        if (zoneStepType == typeof(SpreadStepRangeZoneStep))
                         {
                             SpreadStepRangeZoneStep castZoneStep = (SpreadStepRangeZoneStep)step;
                             SpawnRangeList<IGenStep> spreadSteps = castZoneStep.Spawns;
@@ -1291,10 +1291,10 @@ namespace PMDC.Dev
                             {
                                 //Console.WriteLine(spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName());
                                 // Check for placing random mobs
-                                if (spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName() == "PlaceRandomMobsStep")
+                                if (spreadSteps.GetSpawn(stepIndex).GetType() == typeof(PlaceRandomMobsStep<ListMapGenContext>))
                                 {
                                     PlaceRandomMobsStep<ListMapGenContext> mobSpawnStep = (PlaceRandomMobsStep<ListMapGenContext>)spreadSteps.GetSpawn(stepIndex);
-                                    if (mobSpawnStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                    if (mobSpawnStep.Spawn.GetType() == typeof(LoopedTeamSpawner<ListMapGenContext>))
                                     { 
                                         LoopedTeamSpawner<ListMapGenContext> teamSpawner = (LoopedTeamSpawner<ListMapGenContext>)mobSpawnStep.Spawn;
                                         SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)teamSpawner.Picker;
@@ -1310,7 +1310,7 @@ namespace PMDC.Dev
                                 }
                             }
                         }
-                        if (zoneStepType == "SpreadVaultZoneStep")
+                        if (zoneStepType == typeof(SpreadVaultZoneStep))
                         {
                             SpreadVaultZoneStep castZoneStep = (SpreadVaultZoneStep)step;
                             SpawnRangeList<MobSpawn> spawnList = castZoneStep.Mobs;
@@ -1371,14 +1371,14 @@ namespace PMDC.Dev
                                         if (currentGenStep is PlaceRandomMobsStep<MapGenContext>)
                                         {
                                             PlaceRandomMobsStep<MapGenContext> currentPlaceRandomMobsGenStep = (PlaceRandomMobsStep<MapGenContext>)currentGenStep;
-                                            if (currentPlaceRandomMobsGenStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                            if (currentPlaceRandomMobsGenStep.Spawn.GetType() == typeof(LoopedTeamSpawner<MapGenContext>))
                                             {
                                                 LoopedTeamSpawner<MapGenContext> currentTeamSpawner = (LoopedTeamSpawner<MapGenContext>)currentPlaceRandomMobsGenStep.Spawn;
                                                 //Console.WriteLine(currentTeamSpawner.Picker.GetType().GetFormattedTypeName());
-                                                if (currentTeamSpawner.Picker.GetType().GetFormattedTypeName() == "SpecificTeamSpawner")
+                                                if (currentTeamSpawner.Picker.GetType() == typeof(SpecificTeamSpawner))
                                                 {
                                                     SpawnList<MobSpawn> potentialSpawnList = currentTeamSpawner.Picker.GetPossibleSpawns();
-                                                    if (currentTeamSpawner.AmountSpawner.GetType().GetFormattedTypeName() == "RandDecay")
+                                                    if (currentTeamSpawner.AmountSpawner.GetType() == typeof(RandDecay))
                                                     {
                                                         RandDecay currentRandDecaySpawner = (RandDecay)currentTeamSpawner.AmountSpawner;
                                                         for (int potentialSpawnIndex = 0; potentialSpawnIndex < potentialSpawnList.Count; potentialSpawnIndex++)
@@ -1416,7 +1416,7 @@ namespace PMDC.Dev
                                             PlaceTerrainMobsStep<ListMapGenContext> currentPlaceTerrainMobsGenStep = (PlaceTerrainMobsStep<ListMapGenContext>)currentGenStep;
                                             LoopedTeamSpawner<ListMapGenContext> terrainMobsSpawner = (LoopedTeamSpawner<ListMapGenContext>)currentPlaceTerrainMobsGenStep.Spawn;
                                             TeamSpawner specificSpawner = terrainMobsSpawner.Picker;
-                                            if (specificSpawner.GetType().GetFormattedTypeName() == "PoolTeamSpawner")
+                                            if (specificSpawner.GetType() == typeof(PoolTeamSpawner))
                                             {
                                                 PoolTeamSpawner specificPoolSpawner = (PoolTeamSpawner)specificSpawner;
                                                 SpawnList<TeamMemberSpawn> terrainSpawns = specificPoolSpawner.Spawns;
@@ -1510,7 +1510,7 @@ namespace PMDC.Dev
                     else if (currentSegment is SingularSegment)
                     {
                         SingularSegment currentSingularSegment = (SingularSegment)currentSegment;
-                        if (currentSingularSegment.BaseFloor.GetType().GetFormattedTypeName() == "LoadGen")
+                        if (currentSingularSegment.BaseFloor.GetType() == typeof(LoadGen))
                         {
                             PriorityList<GenStep<MapLoadContext>> genStepList = new PriorityList<GenStep<MapLoadContext>>();
                             LoadGen currentFloorGen = (LoadGen)currentSingularSegment.BaseFloor;
@@ -1537,10 +1537,10 @@ namespace PMDC.Dev
                                     if (currentGenStep is PlaceTerrainMobsStep<MapLoadContext>)
                                     {
                                         PlaceTerrainMobsStep<MapLoadContext> currentPlaceTerrainMobsGenStep = (PlaceTerrainMobsStep<MapLoadContext>)currentGenStep;
-                                        if (currentPlaceTerrainMobsGenStep.Spawn.GetType().GetFormattedTypeName() == "LoopedTeamSpawner")
+                                        if (currentPlaceTerrainMobsGenStep.Spawn.GetType() == typeof(LoopedTeamSpawner<MapLoadContext>))
                                         {
                                             LoopedTeamSpawner<MapLoadContext> currentTeamSpawner = (LoopedTeamSpawner<MapLoadContext>)currentPlaceTerrainMobsGenStep.Spawn;
-                                            if (currentTeamSpawner.Picker.GetType().GetFormattedTypeName() == "PoolTeamSpawner")
+                                            if (currentTeamSpawner.Picker.GetType() == typeof(PoolTeamSpawner))
                                             {
                                                 PoolTeamSpawner specificPoolSpawner = (PoolTeamSpawner)currentTeamSpawner.Picker;
                                                 SpawnList<TeamMemberSpawn> terrainSpawns = specificPoolSpawner.Spawns;
