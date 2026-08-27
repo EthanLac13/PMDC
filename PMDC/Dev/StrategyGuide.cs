@@ -1268,7 +1268,6 @@ namespace PMDC.Dev
                         if (zoneStepType == typeof(TeamSpawnZoneStep))
                         {
                             TeamSpawnZoneStep castZoneStep = (TeamSpawnZoneStep)step;
-
                             // Get list of regular dungeon enemies
                             SpawnRangeList<TeamMemberSpawn> spawnList = castZoneStep.Spawns;
                             // Make a data entry for each enemy
@@ -1281,6 +1280,21 @@ namespace PMDC.Dev
                                 IntRange floorRange = spawnList.GetSpawnRange(spawnIndex);
                                 DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, currentSpawn, floorRange.Min, floorRange.Max, null, isBasementFloor);
                                 segmentSpawnList.Add(encounterData);
+                            }
+
+                            // Get list of specific dungeon enemies
+                            SpawnRangeList<SpecificTeamSpawner> specificSpawnList = castZoneStep.SpecificSpawns;
+                            for(int specificSpawnIndex = 0; specificSpawnIndex < specificSpawnList.Count; specificSpawnIndex++)
+                            {
+                                // Get current enemy data
+                                SpecificTeamSpawner currentSpecificSpawn = specificSpawnList.GetSpawn(specificSpawnIndex);
+                                IntRange currentSpecificSpawnFloorRange = specificSpawnList.GetSpawnRange(specificSpawnIndex);
+
+                                foreach(MobSpawn currentMob in currentSpecificSpawn.Spawns)
+                                {
+                                    DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, currentSpecificSpawnFloorRange.Min, currentSpecificSpawnFloorRange.Max, null, isBasementFloor);
+                                    specialSpawnList.Add(encounterData);
+                                }
                             }
                         }
                         if (zoneStepType == typeof(SpreadStepRangeZoneStep))
@@ -1328,29 +1342,105 @@ namespace PMDC.Dev
 
                         for (int floorGenIndex = 0; floorGenIndex < floorGenList.Count; floorGenIndex++)
                         {
+                            PriorityList<IGenStep> genStepList = new PriorityList<IGenStep>();
+                            IFloorGen currentFloorGen = floorGenList[floorGenIndex];
                             if (floorGenList[floorGenIndex] is GridFloorGen)
                             {
-                                PriorityList<GenStep<MapGenContext>> genStepList = new PriorityList<GenStep<MapGenContext>>();
-                                GridFloorGen currentFloorGen = (GridFloorGen)floorGenList[floorGenIndex];
-                                genStepList = currentFloorGen.GenSteps;
-
-                                IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
-                                foreach (Priority currentPriority in genStepListOfPriorities)
+                                GridFloorGen currentGen = (GridFloorGen)currentFloorGen;
+                                PriorityList<GenStep<MapGenContext>> uncastGenStepList = currentGen.GenSteps;
+                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
                                 {
-                                    IEnumerable<GenStep<MapGenContext>> genStepsAtCurrentPriority = genStepList.GetItems(currentPriority);
-
-                                    foreach (GenStep<MapGenContext> currentGenStep in genStepsAtCurrentPriority)
+                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
+                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
                                     {
-                                        if (currentGenStep is PlaceRandomMobsStep<MapGenContext>)
+                                        genStepList.Add(currentPriority, currentGenStep);
+                                    }
+                                }
+                            }
+                            if (floorGenList[floorGenIndex] is LoadGen)
+                            {
+                                LoadGen currentGen = (LoadGen)currentFloorGen;
+                                PriorityList<GenStep<MapLoadContext>> uncastGenStepList = currentGen.GenSteps;
+                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
+                                {
+                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
+                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
+                                    {
+                                        genStepList.Add(currentPriority, currentGenStep);
+                                    }
+                                }
+                            }
+
+                            IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
+                            foreach (Priority currentPriority in genStepListOfPriorities)
+                            {
+                                IEnumerable<IGenStep> genStepsAtCurrentPriority = genStepList.GetItems(currentPriority);
+                                foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
+                                {
+                                    // Get special per-floor spawns
+                                    if (currentGenStep is PlaceRandomMobsStep<MapGenContext> || currentGenStep is PlaceRandomMobsStep<ListMapGenContext>)
+                                    {
+                                        List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)currentGenStep);
+                                        for (int i = 0; i < spawnList.Count; i++)
                                         {
-                                            List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)currentGenStep);
-                                            for (int i = 0; i < spawnList.Count; i++)
+                                            DungeonSpawnData spawnData = spawnList[i];
+                                            spawnData.startFloor = floorGenIndex;
+                                            spawnData.endFloor = floorGenIndex + 1;
+                                            //Console.WriteLine(spawnData);
+                                            specialSpawnList.Add(spawnData);
+                                        }
+                                    }
+
+                                    // Get spawns in loaded map
+                                    if (currentGenStep is MappedRoomStep<MapLoadContext>)
+                                    {
+                                        MappedRoomStep<MapLoadContext> currentMappedRoomGenStep = (MappedRoomStep<MapLoadContext>)currentGenStep;
+                                        string mapID = currentMappedRoomGenStep.MapID;
+                                        Map currentMap = DataManager.Instance.GetMap(mapID);
+
+                                        if (zoneName == "")
+                                        {
+                                            zoneName = currentMap.Name.ToLocal();
+                                            //Console.WriteLine(zoneName);
+                                            trimmedZoneName = zoneName.Replace("\r\n", " ").Replace("\r", " ").Replace("\n", " ").Replace("B{0}F", "").Replace("{0}F", "").TrimEnd().Replace(" ", "_");
+                                            //Console.WriteLine(trimmedZoneName);
+                                        }
+
+                                        if (currentMap.MapTeams.Count > 0)
+                                        {
+                                            Team mapMobs = currentMap.MapTeams[0];
+                                            foreach (Character currentMob in mapMobs.Players)
                                             {
-                                                DungeonSpawnData spawnData = spawnList[i];
-                                                spawnData.startFloor = floorGenIndex;
-                                                spawnData.endFloor = floorGenIndex + 1;
-                                                //spawnData.extraFeatures.Add([String.Format("Spawns {0}-{1} times per floor with a {2}% chance<br>Doesn't respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate)]);
-                                                specialSpawnList.Add(spawnData);
+                                                //Console.WriteLine(currentMob.Name);
+
+                                                StaticSpawnData currentStaticSpawn = new StaticSpawnData();
+                                                currentStaticSpawn.spawnName = currentMob.Name;
+                                                currentStaticSpawn.level = currentMob.Level;
+                                                currentStaticSpawn.gender = (int)currentMob.CurrentForm.Gender;
+
+                                                foreach (SlotSkill currentSkill in currentMob.BaseSkills)
+                                                {
+                                                    SkillData learnedSkill = DataManager.Instance.GetSkill(currentSkill.SkillNum);
+                                                    currentStaticSpawn.specifiedSkillsList.Add("[[" + learnedSkill.Name.ToLocal() + "]]");
+                                                }
+
+                                                currentStaticSpawn.spawnIntrinsic = DataManager.Instance.GetIntrinsic(currentMob.BaseIntrinsics[0]).Name.ToLocal();
+
+                                                currentStaticSpawn.extraFeatures.Add("Max HP: " + currentMob.MaxHP.ToString());
+                                                currentStaticSpawn.extraFeatures.Add("Attack: " + currentMob.Atk.ToString());
+                                                currentStaticSpawn.extraFeatures.Add("Defense: " + currentMob.Def.ToString());
+                                                currentStaticSpawn.extraFeatures.Add("Sp. Atk: " + currentMob.MAtk.ToString());
+                                                currentStaticSpawn.extraFeatures.Add("Sp. Def: " + currentMob.MDef.ToString());
+                                                currentStaticSpawn.extraFeatures.Add("Speed: " + currentMob.Speed.ToString());
+
+                                                if (currentMob.EquippedItem.ID != "")
+                                                {
+                                                    ItemData mobHeldItem = DataManager.Instance.GetItem(currentMob.EquippedItem.ID);
+                                                    currentStaticSpawn.extraFeatures.Add("Held: [[" + mobHeldItem.Name.ToLocal() + "]]");
+                                                }
+
+
+                                                staticSpawnList.Add(currentStaticSpawn);
                                             }
                                         }
                                     }
