@@ -1289,23 +1289,16 @@ namespace PMDC.Dev
                             SpawnRangeList<IGenStep> spreadSteps = castZoneStep.Spawns;
                             for (int stepIndex = 0; stepIndex < spreadSteps.Count; stepIndex++)
                             {
-                                //Console.WriteLine(spreadSteps.GetSpawn(stepIndex).GetType().GetFormattedTypeName());
-                                // Check for placing random mobs
-                                if (spreadSteps.GetSpawn(stepIndex).GetType() == typeof(PlaceRandomMobsStep<ListMapGenContext>))
+                                // Get random mob placement through the dungeon
+                                if (spreadSteps.GetSpawn(stepIndex) is IPlaceMobsStep)
                                 {
-                                    PlaceRandomMobsStep<ListMapGenContext> mobSpawnStep = (PlaceRandomMobsStep<ListMapGenContext>)spreadSteps.GetSpawn(stepIndex);
-                                    if (mobSpawnStep.Spawn.GetType() == typeof(LoopedTeamSpawner<ListMapGenContext>))
-                                    { 
-                                        LoopedTeamSpawner<ListMapGenContext> teamSpawner = (LoopedTeamSpawner<ListMapGenContext>)mobSpawnStep.Spawn;
-                                        SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)teamSpawner.Picker;
-                                        List<MobSpawn> specificSpawns = specificSpawner.Spawns;
-
-                                        for(int specificSpawnIndex = 0; specificSpawnIndex < specificSpawns.Count; specificSpawnIndex++)
-                                        {
-                                            MobSpawn currentMob = specificSpawns[specificSpawnIndex];
-                                            DungeonSpawnData encounterData = GetDungeonEncounterData(currentMob, null, castZoneStep.SpreadPlan.FloorRange.Min, castZoneStep.SpreadPlan.FloorRange.Max + 1, null, isBasementFloor);
-                                            specialSpawnList.Add(encounterData);
-                                        }
+                                    List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)spreadSteps.GetSpawn(stepIndex));
+                                    for(int i = 0; i < spawnList.Count; i++)
+                                    {
+                                        DungeonSpawnData spawnData = spawnList[i];
+                                        spawnData.startFloor = castZoneStep.SpreadPlan.FloorRange.Min + 1;
+                                        spawnData.endFloor = castZoneStep.SpreadPlan.FloorRange.Max + 1;
+                                        specialSpawnList.Add(spawnData);
                                     }
                                 }
                             }
@@ -1335,6 +1328,35 @@ namespace PMDC.Dev
 
                         for (int floorGenIndex = 0; floorGenIndex < floorGenList.Count; floorGenIndex++)
                         {
+                            if (floorGenList[floorGenIndex] is GridFloorGen)
+                            {
+                                PriorityList<GenStep<MapGenContext>> genStepList = new PriorityList<GenStep<MapGenContext>>();
+                                GridFloorGen currentFloorGen = (GridFloorGen)floorGenList[floorGenIndex];
+                                genStepList = currentFloorGen.GenSteps;
+
+                                IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
+                                foreach (Priority currentPriority in genStepListOfPriorities)
+                                {
+                                    IEnumerable<GenStep<MapGenContext>> genStepsAtCurrentPriority = genStepList.GetItems(currentPriority);
+
+                                    foreach (GenStep<MapGenContext> currentGenStep in genStepsAtCurrentPriority)
+                                    {
+                                        if (currentGenStep is PlaceRandomMobsStep<MapGenContext>)
+                                        {
+                                            List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)currentGenStep);
+                                            for (int i = 0; i < spawnList.Count; i++)
+                                            {
+                                                DungeonSpawnData spawnData = spawnList[i];
+                                                spawnData.startFloor = floorGenIndex;
+                                                spawnData.endFloor = floorGenIndex + 1;
+                                                //spawnData.extraFeatures.Add([String.Format("Spawns {0}-{1} times per floor with a {2}% chance<br>Doesn't respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate)]);
+                                                specialSpawnList.Add(spawnData);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            /*
                             //Console.WriteLine(floorGenList[floorGenIndex].GetType());
                             if (floorGenList[floorGenIndex] is GridFloorGen)
                             {
@@ -1505,7 +1527,9 @@ namespace PMDC.Dev
                                     }
                                 }
                             }
+                            */
                         }
+                        
                     }
                     else if (currentSegment is SingularSegment)
                     {
@@ -1937,6 +1961,48 @@ namespace PMDC.Dev
 
                 return encounterRow;
             }
+        }
+
+        public static List<DungeonSpawnData> EvaluateMobSpawnStep(IPlaceMobsStep evaluatedStep)
+        {
+            List<DungeonSpawnData> currentSpecialSpawns = new List<DungeonSpawnData>();
+            //Console.WriteLine(evaluatedStep.Spawn.GetType());
+
+            ILoopedTeamSpawner loopedTeamSpawner = null;
+
+            if (evaluatedStep.Spawn.GetType() == typeof(LoopedTeamSpawner<ListMapGenContext>))
+            {
+                loopedTeamSpawner = (LoopedTeamSpawner<ListMapGenContext>)evaluatedStep.Spawn;
+            }
+            if (evaluatedStep.Spawn.GetType() == typeof(LoopedTeamSpawner<MapGenContext>))
+            {
+                loopedTeamSpawner = (LoopedTeamSpawner<MapGenContext>)evaluatedStep.Spawn;
+            }
+
+            if (loopedTeamSpawner != null)
+            {
+                SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)loopedTeamSpawner.Picker;
+                List<MobSpawn> specificSpawns = specificSpawner.Spawns;
+
+                // If there's a RandDecay for specific spawns per floor, keep track of it
+                RandDecay currentRandDecaySpawner = new RandDecay(-1);
+                if (loopedTeamSpawner.AmountSpawner.GetType() == typeof(RandDecay))
+                {
+                    currentRandDecaySpawner = (RandDecay)loopedTeamSpawner.AmountSpawner;
+                }
+
+                foreach (MobSpawn mobSpawn in specificSpawns)
+                {
+                    DungeonSpawnData currentSpawnData = GetDungeonEncounterData(mobSpawn);
+                    // Only add this tag if there's a RandDecay
+                    if (currentRandDecaySpawner.Min != -1)
+                    {
+                        currentSpawnData.extraFeatures.Add(String.Format("Spawns {0}-{1} times per floor with a {2}% chance<br>Doesn't respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate));
+                    }
+                    currentSpecialSpawns.Add(currentSpawnData);
+                }
+            }
+            return currentSpecialSpawns;
         }
 
 
