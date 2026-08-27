@@ -366,7 +366,7 @@ namespace PMDC.Dev
                             lastValidForm = form;
 
                             string formName = formData.FormName.DefaultText;
-                            string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+                            string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("!", "Exclamation Mark").Replace("%", " Percent").Replace(" ", "_");
 
 
                             // Get type names
@@ -839,7 +839,7 @@ namespace PMDC.Dev
                         MonsterFormData currentMonsterForm = monsterFamilyData[evolutionBranchIndex][familyMemberIndex];
 
                         string formName = currentMonsterForm.FormName.DefaultText;
-                        string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+                        string strippedName = formName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("!", "Exclamation Mark").Replace("%", " Percent").Replace(" ", "_");
 
                         if (namesAlreadyUsed.Contains(strippedName))
                         {
@@ -870,7 +870,7 @@ namespace PMDC.Dev
 
                 // Write to file
                 string firstFormStrippedName = startingMonster.Name.DefaultText;
-                firstFormStrippedName = firstFormStrippedName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("?", "Exclamation Mark").Replace(" ", "_");
+                firstFormStrippedName = firstFormStrippedName.Replace(".", "").Replace(":", "").Replace("?", "Question Mark").Replace("!", "Exclamation Mark").Replace("%", " Percent").Replace(" ", "_");
                 if (!singleStageFamily)
                 {
                     firstFormStrippedName += "_family";
@@ -1012,7 +1012,7 @@ namespace PMDC.Dev
                         "\r\n|range=" + range_string +
                         "\r\n|target=" + true_target_string +
                         "\r\n|terrain_effects=" + terrain_string +
-                        "\r\n|effects=" + "[TMP] " + localDesc +
+                        "\r\n|description=" + "[TMP] " + localDesc +
                         "\r\n}}";
 
                     bool completed = WriteToWiki(localName + "/Data", fileContent);
