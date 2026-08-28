@@ -2184,7 +2184,7 @@ namespace PMDC.Dev
                         currentSpawnData.extraFeatures.Add(String.Format("Spawns {0}-{1} times per floor; {2}% chance<br>Does not respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate));
                     }
                     // Check for terrain the mob spawns on
-                    if (isTerrainMobStep)
+                    if (isTerrainMobStep && addedTerrainString.Length > 0)
                     {
                         currentSpawnData.extraFeatures.Add(addedTerrainString);
                     }
@@ -2201,7 +2201,7 @@ namespace PMDC.Dev
                     {
                         DungeonSpawnData currentSpawnData = GetDungeonEncounterData(mobSpawn);
                         // Check for terrain the mob spawns on
-                        if (isTerrainMobStep)
+                        if (isTerrainMobStep && addedTerrainString.Length > 0)
                         {
                             currentSpawnData.extraFeatures.Add(addedTerrainString);
                         }
