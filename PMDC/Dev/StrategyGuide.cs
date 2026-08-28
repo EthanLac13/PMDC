@@ -1357,6 +1357,19 @@ namespace PMDC.Dev
                                     }
                                 }
                             }
+                            if (floorGenList[floorGenIndex] is RoomFloorGen)
+                            {
+                                RoomFloorGen currentGen = (RoomFloorGen)currentFloorGen;
+                                PriorityList<GenStep<ListMapGenContext>> uncastGenStepList = currentGen.GenSteps;
+                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
+                                {
+                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
+                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
+                                    {
+                                        genStepList.Add(currentPriority, currentGenStep);
+                                    }
+                                }
+                            }
                             if (floorGenList[floorGenIndex] is LoadGen)
                             {
                                 LoadGen currentGen = (LoadGen)currentFloorGen;
@@ -1378,14 +1391,16 @@ namespace PMDC.Dev
                                 foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
                                 {
                                     // Get special per-floor spawns
-                                    if (currentGenStep is PlaceRandomMobsStep<MapGenContext> || currentGenStep is PlaceRandomMobsStep<ListMapGenContext>)
+                                    if (currentGenStep is PlaceMobsStep<MapGenContext> || currentGenStep is PlaceMobsStep<ListMapGenContext>)
                                     {
+                                        //Console.WriteLine(currentGenStep);
                                         List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)currentGenStep);
                                         for (int i = 0; i < spawnList.Count; i++)
                                         {
                                             DungeonSpawnData spawnData = spawnList[i];
-                                            spawnData.startFloor = floorGenIndex;
+                                            spawnData.startFloor = floorGenIndex + 1;
                                             spawnData.endFloor = floorGenIndex + 1;
+                                            spawnData.isBasement = isBasementFloor;
                                             //Console.WriteLine(spawnData);
                                             specialSpawnList.Add(spawnData);
                                         }
@@ -2058,7 +2073,9 @@ namespace PMDC.Dev
             List<DungeonSpawnData> currentSpecialSpawns = new List<DungeonSpawnData>();
             //Console.WriteLine(evaluatedStep.Spawn.GetType());
 
+            // Check for two spawner types
             ILoopedTeamSpawner loopedTeamSpawner = null;
+            IPresetMultiTeamSpawner presetMultiTeamSpawner = null;
 
             if (evaluatedStep.Spawn.GetType() == typeof(LoopedTeamSpawner<ListMapGenContext>))
             {
@@ -2069,10 +2086,87 @@ namespace PMDC.Dev
                 loopedTeamSpawner = (LoopedTeamSpawner<MapGenContext>)evaluatedStep.Spawn;
             }
 
+            if (evaluatedStep.Spawn.GetType() == typeof(PresetMultiTeamSpawner<ListMapGenContext>))
+            {
+                presetMultiTeamSpawner = (PresetMultiTeamSpawner<ListMapGenContext>)evaluatedStep.Spawn;
+            }
+            if (evaluatedStep.Spawn.GetType() == typeof(PresetMultiTeamSpawner<MapGenContext>))
+            {
+                presetMultiTeamSpawner = (PresetMultiTeamSpawner<MapGenContext>)evaluatedStep.Spawn;
+            }
+
+            bool isTerrainMobStep = false;
+            string addedTerrainString = "";
+            if (evaluatedStep is PlaceTerrainMobsStep<ListMapGenContext> || evaluatedStep is PlaceTerrainMobsStep<MapGenContext> || evaluatedStep is PlaceDisconnectedMobsStep<ListMapGenContext> || evaluatedStep is PlaceDisconnectedMobsStep<MapGenContext>)
+            {
+                isTerrainMobStep = true;
+                List<ITile> acceptedTileList = new List<ITile>();
+
+                if (evaluatedStep is PlaceTerrainMobsStep<ListMapGenContext>)
+                {
+                    PlaceTerrainMobsStep<ListMapGenContext> castStep = (PlaceTerrainMobsStep<ListMapGenContext>)evaluatedStep;
+                    acceptedTileList = castStep.AcceptedTiles;
+                }
+                else if (evaluatedStep is PlaceTerrainMobsStep<MapGenContext>)
+                {
+                    PlaceTerrainMobsStep<MapGenContext> castStep = (PlaceTerrainMobsStep<MapGenContext>)evaluatedStep;
+                    acceptedTileList = castStep.AcceptedTiles;
+                }
+                else if (evaluatedStep is PlaceDisconnectedMobsStep<ListMapGenContext>)
+                {
+                    PlaceDisconnectedMobsStep<ListMapGenContext> castStep = (PlaceDisconnectedMobsStep<ListMapGenContext>)evaluatedStep;
+                    acceptedTileList = castStep.AcceptedTiles;
+                }
+                else if (evaluatedStep is PlaceDisconnectedMobsStep<MapGenContext>)
+                {
+                    PlaceDisconnectedMobsStep<MapGenContext> castStep = (PlaceDisconnectedMobsStep<MapGenContext>)evaluatedStep;
+                    acceptedTileList = castStep.AcceptedTiles;
+                }
+
+                foreach (ITile currentTile in acceptedTileList)
+                {
+                    string currentTileString = currentTile.ToString();
+                    if (currentTileString.Contains("Foliage"))
+                    {
+                        addedTerrainString = "Spawns in tall grass";
+                    }
+                    else if (currentTileString.Contains("Abyss"))
+                    {
+                        addedTerrainString = "Spawns on abyss tiles";
+                    }
+                    else if (currentTileString.Contains("Blocked"))
+                    {
+                        addedTerrainString = "Spawns in walls";
+                    }
+                    else if (currentTileString.Contains("Water"))
+                    {
+                        addedTerrainString = "Spawns on water tiles";
+                    }
+                    else if (currentTileString.Contains("Lava"))
+                    {
+                        addedTerrainString = "Spawns on lava tiles";
+                    }
+                }
+            }
+
             if (loopedTeamSpawner != null)
             {
-                SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)loopedTeamSpawner.Picker;
-                List<MobSpawn> specificSpawns = specificSpawner.Spawns;
+                List<MobSpawn> specificSpawns = new List<MobSpawn>();
+                if (loopedTeamSpawner.Picker is SpecificTeamSpawner)
+                {
+                    SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)loopedTeamSpawner.Picker;
+                    specificSpawns = specificSpawner.Spawns;
+                }
+                else
+                {
+                    PoolTeamSpawner specificSpawner = (PoolTeamSpawner)loopedTeamSpawner.Picker;
+                    SpawnList<MobSpawn> poolSpawnList = specificSpawner.GetPossibleSpawns();
+                    for(int currentSpawn = 0; currentSpawn < poolSpawnList.Count; currentSpawn++)
+                    {
+                        specificSpawns.Add(poolSpawnList.GetSpawn(currentSpawn));
+                    }
+                }
+                
 
                 // If there's a RandDecay for specific spawns per floor, keep track of it
                 RandDecay currentRandDecaySpawner = new RandDecay(-1);
@@ -2087,10 +2181,34 @@ namespace PMDC.Dev
                     // Only add this tag if there's a RandDecay
                     if (currentRandDecaySpawner.Min != -1)
                     {
-                        currentSpawnData.extraFeatures.Add(String.Format("Spawns {0}-{1} times per floor with a {2}% chance<br>Doesn't respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate));
+                        currentSpawnData.extraFeatures.Add(String.Format("Spawns {0}-{1} times per floor; {2}% chance<br>Does not respawn", currentRandDecaySpawner.Min, currentRandDecaySpawner.Max, currentRandDecaySpawner.Rate));
+                    }
+                    // Check for terrain the mob spawns on
+                    if (isTerrainMobStep)
+                    {
+                        currentSpawnData.extraFeatures.Add(addedTerrainString);
                     }
                     currentSpecialSpawns.Add(currentSpawnData);
                 }
+            }
+            if (presetMultiTeamSpawner != null)
+            {
+                List<SpecificTeamSpawner> spawnerList = presetMultiTeamSpawner.Spawns;
+                foreach(SpecificTeamSpawner currentSpawner in spawnerList)
+                {
+                    List<MobSpawn> specificSpawns = currentSpawner.Spawns;
+                    foreach (MobSpawn mobSpawn in specificSpawns)
+                    {
+                        DungeonSpawnData currentSpawnData = GetDungeonEncounterData(mobSpawn);
+                        // Check for terrain the mob spawns on
+                        if (isTerrainMobStep)
+                        {
+                            currentSpawnData.extraFeatures.Add(addedTerrainString);
+                        }
+                        currentSpecialSpawns.Add(currentSpawnData);
+                    }
+                }
+                
             }
             return currentSpecialSpawns;
         }
