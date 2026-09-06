@@ -2044,6 +2044,10 @@ namespace PMDC.Dev
                         {
                             currentSpawnData.extraFeatures.Add("Spawns asleep");
                         }
+                        if (currentStatus.ID == "freeze")
+                        {
+                            currentSpawnData.extraFeatures.Add("Spawns frozen");
+                        }
                     }
                 }
                 if (spawnFeature is MobSpawnLevelScale)
