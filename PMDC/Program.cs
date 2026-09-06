@@ -590,6 +590,7 @@ namespace PMDC
                     StrategyGuide.PrintAbilityWiki();
                     StrategyGuide.PrintMonsterWiki();
                     StrategyGuide.PrintMonsterFamilyWiki();
+                    StrategyGuide.PrintDungeonEncounterWiki();
                     //StrategyGuide.PrintDungeonWiki();
                     return;
                 }
