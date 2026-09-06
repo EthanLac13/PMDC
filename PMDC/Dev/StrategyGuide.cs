@@ -1389,6 +1389,24 @@ namespace PMDC.Dev
                                     }
                                 }
 
+                                if (currentGenStep is GuardSealStep<MapGenContext>)
+                                {
+                                    GuardSealStep<MapGenContext> currentGuardSealGenStep = (GuardSealStep<MapGenContext>)currentGenStep;
+                                    LoopedRand<MobSpawn> guardRand = (LoopedRand<MobSpawn>)currentGuardSealGenStep.Guards;
+                                    SpawnList<MobSpawn> guardSpawns = (SpawnList<MobSpawn>)guardRand.Spawner;
+
+                                    for (int guardSpawnIndex = 0; guardSpawnIndex < guardSpawns.Count; guardSpawnIndex++)
+                                    {
+                                        MobSpawn currentSpawn = guardSpawns.GetSpawn(guardSpawnIndex);
+                                        DungeonSpawnData spawnData = GetDungeonEncounterData(currentSpawn);
+                                        spawnData.startFloor = floorGenIndex + 1;
+                                        spawnData.endFloor = floorGenIndex + 1;
+                                        spawnData.isBasement = isBasementFloor;
+                                        spawnData.extraFeatures.Add("Spawns once, guarding secret stairs");
+                                        specialSpawnList.Add(spawnData);
+                                    }
+                                }
+
                                 if (currentGenStep is MapNameIDStep<MapLoadContext>)
                                 {
                                     MapNameIDStep<MapLoadContext> currentMapNameIDGenStep = (MapNameIDStep<MapLoadContext>)currentGenStep;
