@@ -1347,41 +1347,17 @@ namespace PMDC.Dev
                             if (floorGenList[floorGenIndex] is GridFloorGen)
                             {
                                 GridFloorGen currentGen = (GridFloorGen)currentFloorGen;
-                                PriorityList<GenStep<MapGenContext>> uncastGenStepList = currentGen.GenSteps;
-                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
-                                {
-                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
-                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
-                                    {
-                                        genStepList.Add(currentPriority, currentGenStep);
-                                    }
-                                }
+                                RetrieveGenSteps<MapGenContext>(genStepList, currentGen);
                             }
                             if (floorGenList[floorGenIndex] is RoomFloorGen)
                             {
                                 RoomFloorGen currentGen = (RoomFloorGen)currentFloorGen;
-                                PriorityList<GenStep<ListMapGenContext>> uncastGenStepList = currentGen.GenSteps;
-                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
-                                {
-                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
-                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
-                                    {
-                                        genStepList.Add(currentPriority, currentGenStep);
-                                    }
-                                }
+                                RetrieveGenSteps<ListMapGenContext>(genStepList, currentGen);
                             }
                             if (floorGenList[floorGenIndex] is LoadGen)
                             {
                                 LoadGen currentGen = (LoadGen)currentFloorGen;
-                                PriorityList<GenStep<MapLoadContext>> uncastGenStepList = currentGen.GenSteps;
-                                foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
-                                {
-                                    IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
-                                    foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
-                                    {
-                                        genStepList.Add(currentPriority, currentGenStep);
-                                    }
-                                }
+                                RetrieveGenSteps<MapLoadContext>(genStepList, currentGen);
                             }
 
                             IEnumerable<Priority> genStepListOfPriorities = genStepList.GetPriorities();
@@ -2065,6 +2041,19 @@ namespace PMDC.Dev
                 encounterRow += "\r\n}}\r\n";
 
                 return encounterRow;
+            }
+        }
+
+        public static void RetrieveGenSteps<T>(PriorityList<IGenStep> genStepList, MapGen<T> currentGen) where T : BaseMapGenContext
+        {
+            PriorityList<GenStep<T>> uncastGenStepList = currentGen.GenSteps;
+            foreach (Priority currentPriority in uncastGenStepList.GetPriorities())
+            {
+                IEnumerable<IGenStep> genStepsAtCurrentPriority = uncastGenStepList.GetItems(currentPriority);
+                foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
+                {
+                    genStepList.Add(currentPriority, currentGenStep);
+                }
             }
         }
 
