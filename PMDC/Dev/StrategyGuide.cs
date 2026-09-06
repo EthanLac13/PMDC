@@ -1391,7 +1391,7 @@ namespace PMDC.Dev
                                 foreach (IGenStep currentGenStep in genStepsAtCurrentPriority)
                                 {
                                     // Get special per-floor spawns
-                                    if (currentGenStep is PlaceMobsStep<MapGenContext> || currentGenStep is PlaceMobsStep<ListMapGenContext>)
+                                    if (currentGenStep is IPlaceMobsStep)
                                     {
                                         //Console.WriteLine(currentGenStep);
                                         List<DungeonSpawnData> spawnList = EvaluateMobSpawnStep((IPlaceMobsStep)currentGenStep);
@@ -2076,50 +2076,30 @@ namespace PMDC.Dev
             // Check for two spawner types
             ILoopedTeamSpawner loopedTeamSpawner = null;
             IPresetMultiTeamSpawner presetMultiTeamSpawner = null;
-
-            if (evaluatedStep.Spawn.GetType() == typeof(LoopedTeamSpawner<ListMapGenContext>))
+            if (evaluatedStep.Spawn is ILoopedTeamSpawner)
             {
-                loopedTeamSpawner = (LoopedTeamSpawner<ListMapGenContext>)evaluatedStep.Spawn;
+                loopedTeamSpawner = (ILoopedTeamSpawner)evaluatedStep.Spawn;
             }
-            if (evaluatedStep.Spawn.GetType() == typeof(LoopedTeamSpawner<MapGenContext>))
+            if (evaluatedStep.Spawn is IPresetMultiTeamSpawner)
             {
-                loopedTeamSpawner = (LoopedTeamSpawner<MapGenContext>)evaluatedStep.Spawn;
-            }
-
-            if (evaluatedStep.Spawn.GetType() == typeof(PresetMultiTeamSpawner<ListMapGenContext>))
-            {
-                presetMultiTeamSpawner = (PresetMultiTeamSpawner<ListMapGenContext>)evaluatedStep.Spawn;
-            }
-            if (evaluatedStep.Spawn.GetType() == typeof(PresetMultiTeamSpawner<MapGenContext>))
-            {
-                presetMultiTeamSpawner = (PresetMultiTeamSpawner<MapGenContext>)evaluatedStep.Spawn;
+                presetMultiTeamSpawner = (IPresetMultiTeamSpawner)evaluatedStep.Spawn;
             }
 
             bool isTerrainMobStep = false;
             string addedTerrainString = "";
-            if (evaluatedStep is PlaceTerrainMobsStep<ListMapGenContext> || evaluatedStep is PlaceTerrainMobsStep<MapGenContext> || evaluatedStep is PlaceDisconnectedMobsStep<ListMapGenContext> || evaluatedStep is PlaceDisconnectedMobsStep<MapGenContext>)
+            if (evaluatedStep is IPlaceTerrainMobsStep || evaluatedStep is IPlaceDisconnectedMobsStep)
             {
                 isTerrainMobStep = true;
                 List<ITile> acceptedTileList = new List<ITile>();
 
-                if (evaluatedStep is PlaceTerrainMobsStep<ListMapGenContext>)
+                if (evaluatedStep is IPlaceTerrainMobsStep)
                 {
-                    PlaceTerrainMobsStep<ListMapGenContext> castStep = (PlaceTerrainMobsStep<ListMapGenContext>)evaluatedStep;
+                    IPlaceTerrainMobsStep castStep = (IPlaceTerrainMobsStep)evaluatedStep;
                     acceptedTileList = castStep.AcceptedTiles;
                 }
-                else if (evaluatedStep is PlaceTerrainMobsStep<MapGenContext>)
+                else if (evaluatedStep is IPlaceDisconnectedMobsStep)
                 {
-                    PlaceTerrainMobsStep<MapGenContext> castStep = (PlaceTerrainMobsStep<MapGenContext>)evaluatedStep;
-                    acceptedTileList = castStep.AcceptedTiles;
-                }
-                else if (evaluatedStep is PlaceDisconnectedMobsStep<ListMapGenContext>)
-                {
-                    PlaceDisconnectedMobsStep<ListMapGenContext> castStep = (PlaceDisconnectedMobsStep<ListMapGenContext>)evaluatedStep;
-                    acceptedTileList = castStep.AcceptedTiles;
-                }
-                else if (evaluatedStep is PlaceDisconnectedMobsStep<MapGenContext>)
-                {
-                    PlaceDisconnectedMobsStep<MapGenContext> castStep = (PlaceDisconnectedMobsStep<MapGenContext>)evaluatedStep;
+                    IPlaceDisconnectedMobsStep castStep = (IPlaceDisconnectedMobsStep)evaluatedStep;
                     acceptedTileList = castStep.AcceptedTiles;
                 }
 
@@ -2157,7 +2137,7 @@ namespace PMDC.Dev
                     SpecificTeamSpawner specificSpawner = (SpecificTeamSpawner)loopedTeamSpawner.Picker;
                     specificSpawns = specificSpawner.Spawns;
                 }
-                else
+                else if (loopedTeamSpawner.Picker is PoolTeamSpawner)
                 {
                     PoolTeamSpawner specificSpawner = (PoolTeamSpawner)loopedTeamSpawner.Picker;
                     SpawnList<MobSpawn> poolSpawnList = specificSpawner.GetPossibleSpawns();
